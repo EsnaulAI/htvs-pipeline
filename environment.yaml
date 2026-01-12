@@ -1,0 +1,12 @@
+name: htvs_main
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.10
+  - snakemake
+  - pandas
+  - biopython
+  - rdkit
+  - jupyterlab
+  - openbabel

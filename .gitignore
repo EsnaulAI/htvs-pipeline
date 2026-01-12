@@ -1,0 +1,16 @@
+# Ignorar carpetas de datos pesados
+data/databases/
+data/raw/
+
+# Ignorar resultados intermedios y logs
+results/
+.snakemake/
+__pycache__/
+*.pyc
+
+# Ignorar configuraciones de sistema o entornos
+.vscode/
+.DS_Store
+
+# Excepciones (Opcional: si quieres subir resultados pequeños finales)
+!results/module3/final_ranking.csv

@@ -1,0 +1,15 @@
+name: pydca_legacy
+channels:
+    - conda-forge
+    - bioconda
+dependencies:
+    # Usamos Python 3.8 para compatibilidad con librerías viejas
+    - python=3.8
+    - pip
+    # Pre-instalamos numpy/scipy viejos con Conda para evitar compilarlos
+    - numpy<1.18
+    - scipy<1.4
+    - biopython
+    - matplotlib
+    - pip:
+          - pydca

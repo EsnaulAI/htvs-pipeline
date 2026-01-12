@@ -1,0 +1,27 @@
+project_name: Ghost_Jammer_AdeB
+structure:
+  pdb_id: 6OCR
+  chain_id: B
+  target_residue: 89
+  clean_pdb: results/module1/target_clean.pdb
+evolution:
+  n_homologs: 2000
+  e_value: 0.001
+  msa_file: results/module1/alignment.fasta
+  conservation_pdb: results/module1/target_conserved.pdb
+chemistry:
+  zinc_url: http://files.docking.org/2d/BA/BAAB.smi
+  raw_library: data/raw/zinc_library.smi
+  filtered_library: results/module2/library_filtered.smi
+  prepared_dir: results/module2/ligands_3d
+  filters:
+    mw_max: 600
+    logp_max: 3.5
+    must_have_amine: true
+docking:
+  center_x: -38.15550231933594
+  center_y: 0.888374924659729
+  center_z: 25.03125
+  size_x: 22
+  size_y: 22
+  size_z: 22

@@ -1,0 +1,153 @@
+configfile: 'config/config.yaml'
+
+# --- REGLA MAESTRA GLOBAL ---
+rule all:
+    input:
+        "results/module1/candidate_ranking.csv",
+        "results/module1/config_updated.flag",
+        "results/module1/target_prepared.pdbqt",
+        "results/module1/view_scene.cxc",
+        "results/module2/preparation_done.flag"
+
+# --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
+
+rule fetch_clean_pdb:
+    output:
+        pdb=config["structure"]["clean_pdb"],
+        fasta="results/module1/target.fasta"
+    params:
+        pdb_id=config["structure"]["pdb_id"],
+        chain=config["structure"]["chain_id"]
+    script:
+        'scripts/module1_prep_structure.py'
+
+# [cite_start]MEJORA: Aumentamos a 2000 hits y usamos base de datos 'nr' [cite: 4]
+rule run_blast:
+    input: 
+        fasta="results/module1/target.fasta"
+    output: 
+        xml="results/module1/blast_results.xml"
+    params:
+        n_hits=2000,       # Aumentado para potencia estadística en DCA
+        e_val=0.001,
+        db="nr"            # Base de datos masiva (Non-Redundant)
+    script: 
+        'scripts/module1_run_blast.py'
+
+rule parse_and_align:
+    input: 
+        xml="results/module1/blast_results.xml",
+        original_fasta="results/module1/target.fasta"
+    output: 
+        fasta_msa=config["evolution"]["msa_file"]
+    threads: 4
+    script:
+        'scripts/module1_parse_and_align.py'
+
+rule map_conservation:
+    input:
+        pdb=config["structure"]["clean_pdb"],
+        msa=config["evolution"]["msa_file"]
+    output: pdb_conserved=config["evolution"]["conservation_pdb"]
+    script: 'scripts/module1_map_entropy.py'
+
+rule run_pydca:
+    input: msa=config["evolution"]["msa_file"]
+    output:
+        plot="results/module1/dca_distribution.png",
+        report="results/module1/dca_top_contacts.csv"
+    params: target_res=config["structure"]["target_residue"]
+    script: 'scripts/module1_pydca.py'
+
+rule run_network_analysis:
+    input: pdb=config["evolution"]["conservation_pdb"]
+    output: report="results/module1/network_report.txt"
+    params:
+        target_res=config["structure"]["target_residue"],
+        chain=config["structure"]["chain_id"]
+    script: 'scripts/module1_network_analysis.py'
+
+rule run_nma:
+    input: pdb=config["evolution"]["conservation_pdb"]
+    output: plot="results/module1/nma_mobility_profile.png"
+    params:
+        target_res=config["structure"]["target_residue"],
+        chain=config["structure"]["chain_id"]
+    script: 'scripts/module1_nma_check.py'
+
+rule check_druggability:
+    input: pdb=config["structure"]["clean_pdb"]
+    output: report="results/module1/druggability_report.txt"
+    params:
+        chain=config["structure"]["chain_id"],
+        target_res=config["structure"]["target_residue"]
+    script: 'scripts/module1_check_druggability.py'
+
+rule run_fpocket:
+    input: pdb=config["structure"]["clean_pdb"]
+    output: info="results/module1/pockets/target_clean_info.txt"
+    shell:
+        """
+        fpocket -f {input.pdb}
+        mkdir -p results/module1/pockets
+        mv results/module1/target_clean_out/target_clean_info.txt {output.info}
+        rm -rf results/module1/target_clean_out
+        """
+
+rule prepare_receptor_phys:
+    input: pdb=config["structure"]["clean_pdb"]
+    output: pdbqt="results/module1/target_prepared.pdbqt"
+    shell:
+        "obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4"
+
+rule discover_best_candidate:
+    input:
+        pdb=config["evolution"]["conservation_pdb"],
+        pockets="results/module1/pockets/target_clean_info.txt"
+    output: csv="results/module1/candidate_ranking.csv"
+    params: chain=config["structure"]["chain_id"]
+    script: 'scripts/module1_discover_best_target.py'
+
+rule update_target_config:
+    input:
+        csv="results/module1/candidate_ranking.csv",
+        pdb=config["structure"]["clean_pdb"]
+    output: touch("results/module1/config_updated.flag")
+    params: chain=config["structure"]["chain_id"]
+    script: 'scripts/bridge_update_config.py'
+
+rule generate_viz:
+    input: pdb=config["evolution"]["conservation_pdb"]
+    output: cxc="results/module1/view_scene.cxc"
+    params:
+        target_res=config["structure"]["target_residue"],
+        chain=config["structure"]["chain_id"]
+    script: 'scripts/generate_chimerax_scene.py'
+
+# --- MÓDULO 2: QUIMIOINFORMÁTICA ---
+
+
+# 1. Minería de Datos (API ChEMBL) + Inyección de Controles
+rule fetch_library:
+    output: smi=config["chemistry"]["raw_library"]
+    script: 'scripts/fetch_chembl_drugs.py'
+
+# 2. Filtrado Farmacológico (Reglas eNTRy)
+rule filter_ligands:
+    input: smi=config["chemistry"]["raw_library"]
+    output:
+        filtered=config["chemistry"]["filtered_library"],
+        report="results/module2/filtering_report.csv"
+    params:
+        mw=config["chemistry"]["filters"]["mw_max"],
+        logp=config["chemistry"]["filters"]["logp_max"],
+        amine=config["chemistry"]["filters"]["must_have_amine"]
+    script: 'scripts/module2_filter_entry.py'
+
+# 3. Preparación 3D Paralela
+rule prepare_ligands_3d:
+    input: smi=config["chemistry"]["filtered_library"]
+    output: touch("results/module2/preparation_done.flag")
+    params: out_dir=config["chemistry"]["prepared_dir"]
+    threads: 4
+    script: 'scripts/module2_prep_3d.py'
