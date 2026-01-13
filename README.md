@@ -1,1 +1,1 @@
-# HTVS Pipeline: Automated Drug Discovery
+# htvs-pipeline

@@ -7,10 +7,30 @@ results/
 .snakemake/
 __pycache__/
 *.pyc
+*.pyo
+*.log
+*.tmp
 
 # Ignorar configuraciones de sistema o entornos
 .vscode/
 .DS_Store
+.idea/
+.venv/
+env/
+envs/
+*.code-workspace
+
+# Ignorar archivos temporales de notebooks
+.ipynb_checkpoints/
+
+# Ignorar outputs típicos de docking/cheminfo
+*.pdbqt
+*.sdf
+*.mol2
+*.dock
+*.vina
+*.out
+*.pdb
 
 # Excepciones (Opcional: si quieres subir resultados pequeños finales)
 !results/module3/final_ranking.csv
