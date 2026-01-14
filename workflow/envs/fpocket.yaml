@@ -1,0 +1,7 @@
+name: htvs-fpocket
+name: fpocket
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - fpocket>=4.0

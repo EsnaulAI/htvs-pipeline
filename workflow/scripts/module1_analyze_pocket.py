@@ -1,10 +1,25 @@
 # --- MOCK PARA DESARROLLO (Pylance no se quejará) ---
 if "snakemake" not in globals():
+    from pathlib import Path
     from types import SimpleNamespace
+    import yaml
+
+    def load_config():
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+
+    config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(msa="results/module1/alignment.fasta"),
-        output=SimpleNamespace(plot="results/module1/dca_distribution.png", report="results/module1/dca_top_contacts.csv"),
-        params=SimpleNamespace(pdb_id="7KGY", chain="B", n_hits=10, e_val=0.001, target_res=513),
+        input=SimpleNamespace(msa=config["evolution"]["msa_file"]),
+        output=SimpleNamespace(plot=config["analysis"]["dca_distribution"], report=config["analysis"]["dca_top_contacts"]),
+        params=SimpleNamespace(
+            pdb_id=config["structure"]["pdb_id"],
+            chain=config["structure"]["chain_id"],
+            n_hits=config["evolution"]["n_homologs"],
+            e_val=config["evolution"]["e_value"],
+            target_res=config["structure"]["target_residue"],
+        ),
         wildcards=SimpleNamespace(),
         threads=4
     )
@@ -14,6 +29,13 @@ if "snakemake" not in globals():
 from Bio.PDB import PDBParser, NeighborSearch, Selection
 import numpy as np
 import sys
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_error,
+    log_info,
+    require_file,
+)
 
 # Inputs
 pdb_file = snakemake.input.pdb
@@ -21,7 +43,10 @@ chain_id = snakemake.params.chain
 target_res_num = int(snakemake.params.target_res)
 output_report = snakemake.output.report
 
-print(f"🏘️ Analizando el vecindario evolutivo alrededor de {chain_id}:{target_res_num}...")
+require_file(pdb_file, "PDB conservado")
+ensure_parent_dir(output_report)
+
+log_info(f"🏘️ Analizando el vecindario evolutivo alrededor de {chain_id}:{target_res_num}...")
 
 parser = PDBParser(QUIET=True)
 structure = parser.get_structure("Target", pdb_file)
@@ -38,7 +63,7 @@ for res in structure[0][chain_id]:
         break
 
 if not target_residue:
-    print("❌ Error: Target no encontrado.")
+    log_error("❌ Error: Target no encontrado.")
     sys.exit(1)
 
 # Usamos el Carbono Alpha o un átomo central para buscar vecinos
@@ -49,9 +74,9 @@ neighbors = ns.search(center_atom.get_coord(), 6.0, level='R')
 
 # 4. Analizar Conservación (Extraída del B-factor)
 pocket_scores = []
-print("\n📋 RESIDUOS DEL BOLSILLO:")
-print(f"{'Residuo':<10} {'Conservación (0-4.3)':<20} {'Estado'}")
-print("-" * 45)
+log_info("📋 RESIDUOS DEL BOLSILLO:")
+log_info(f"{'Residuo':<10} {'Conservación (0-4.3)':<20} {'Estado'}")
+log_info("-" * 45)
 
 with open(output_report, "w") as f:
     f.write("Residue,Conservation_Score,Status\n")
@@ -67,13 +92,13 @@ with open(output_report, "w") as f:
         if score > 3.5: status = "Crítico 🔥"
         
         line = f"{res.get_resname()}{res.id[1]:<5} {score:<20.2f} {status}"
-        print(line)
+        log_info(line)
         f.write(f"{res.get_resname()}{res.id[1]},{score:.2f},{status}\n")
 
 # 5. Veredicto Final
 avg_pocket = np.mean(pocket_scores)
-print("-" * 45)
-print(f"📊 Puntuación Global del Bolsillo: {avg_pocket:.2f} / 4.32")
+log_info("-" * 45)
+log_info(f"📊 Puntuación Global del Bolsillo: {avg_pocket:.2f} / 4.32")
 
 conclusion = ""
 if avg_pocket > 3.0:
@@ -83,7 +108,9 @@ elif avg_pocket > 1.5:
 else:
     conclusion = "⛔ BOLSILLO HIPER-VARIABLE: Alto riesgo de resistencia."
 
-print(f"   -> {conclusion}")
+log_info(f"-> {conclusion}")
 with open(output_report, "a") as f:
     f.write(f"\n# GLOBAL SCORE: {avg_pocket:.2f}\n")
     f.write(f"# CONCLUSION: {conclusion}\n")
+
+confirm_file(output_report, "reporte del bolsillo")

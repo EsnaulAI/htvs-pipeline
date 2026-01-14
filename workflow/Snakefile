@@ -2,8 +2,11 @@ configfile: 'config/config.yaml'
 
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
+    conda:
+        "../environment.yaml"
     input:
         "results/module1/candidate_ranking.csv",
+        "results/module1/coevolution_profile.png",
         "results/module1/config_updated.flag",
         "results/module1/target_prepared.pdbqt",
         "results/module1/view_scene.cxc",
@@ -12,6 +15,8 @@ rule all:
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
 
 rule fetch_clean_pdb:
+    conda:
+        "../environment.yaml"
     output:
         pdb=config["structure"]["clean_pdb"],
         fasta="results/module1/target.fasta"
@@ -23,6 +28,8 @@ rule fetch_clean_pdb:
 
 # [cite_start]MEJORA: Aumentamos a 2000 hits y usamos base de datos 'nr' [cite: 4]
 rule run_blast:
+    conda:
+        "../environment.yaml"
     input: 
         fasta="results/module1/target.fasta"
     output: 
@@ -34,17 +41,34 @@ rule run_blast:
     script: 
         'scripts/module1_run_blast.py'
 
+rule run_mmseqs:
+    input:
+        fasta="results/module1/target.fasta"
+    output:
+        fasta_homologs="results/module1/homologs_unaligned.fasta"
+    threads: 4
+    conda:
+        "workflow/envs/mmseqs.yaml"
+    script:
+        'scripts/module1_run_mmseqs.py'
+
 rule parse_and_align:
+    conda:
+        "envs/mafft.yaml"
     input: 
         xml="results/module1/blast_results.xml",
         original_fasta="results/module1/target.fasta"
     output: 
         fasta_msa=config["evolution"]["msa_file"]
     threads: 4
+    conda:
+        "workflow/envs/mafft.yaml"
     script:
         'scripts/module1_parse_and_align.py'
 
 rule map_conservation:
+    conda:
+        "../environment.yaml"
     input:
         pdb=config["structure"]["clean_pdb"],
         msa=config["evolution"]["msa_file"]
@@ -52,14 +76,26 @@ rule map_conservation:
     script: 'scripts/module1_map_entropy.py'
 
 rule run_pydca:
+    conda:
+        "envs/pydca.yaml"
     input: msa=config["evolution"]["msa_file"]
     output:
         plot="results/module1/dca_distribution.png",
         report="results/module1/dca_top_contacts.csv"
     params: target_res=config["structure"]["target_residue"]
+    conda:
+        "workflow/envs/pydca.yaml"
     script: 'scripts/module1_pydca.py'
 
+rule run_coevolution_mi:
+    input: msa=config["evolution"]["msa_file"]
+    output: plot="results/module1/coevolution_profile.png"
+    params: target_res=config["structure"]["target_residue"]
+    script: 'scripts/module1_coevolution_mi.py'
+
 rule run_network_analysis:
+    conda:
+        "../environment.yaml"
     input: pdb=config["evolution"]["conservation_pdb"]
     output: report="results/module1/network_report.txt"
     params:
@@ -68,6 +104,8 @@ rule run_network_analysis:
     script: 'scripts/module1_network_analysis.py'
 
 rule run_nma:
+    conda:
+        "../environment.yaml"
     input: pdb=config["evolution"]["conservation_pdb"]
     output: plot="results/module1/nma_mobility_profile.png"
     params:
@@ -76,6 +114,8 @@ rule run_nma:
     script: 'scripts/module1_nma_check.py'
 
 rule check_druggability:
+    conda:
+        "../environment.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: report="results/module1/druggability_report.txt"
     params:
@@ -84,8 +124,12 @@ rule check_druggability:
     script: 'scripts/module1_check_druggability.py'
 
 rule run_fpocket:
+    conda:
+        "envs/fpocket.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: info="results/module1/pockets/target_clean_info.txt"
+    conda:
+        "workflow/envs/fpocket.yaml"
     shell:
         """
         fpocket -f {input.pdb}
@@ -95,12 +139,18 @@ rule run_fpocket:
         """
 
 rule prepare_receptor_phys:
+    conda:
+        "envs/openbabel.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: pdbqt="results/module1/target_prepared.pdbqt"
+    conda:
+        "workflow/envs/openbabel.yaml"
     shell:
         "obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4"
 
 rule discover_best_candidate:
+    conda:
+        "../environment.yaml"
     input:
         pdb=config["evolution"]["conservation_pdb"],
         pockets="results/module1/pockets/target_clean_info.txt"
@@ -109,6 +159,8 @@ rule discover_best_candidate:
     script: 'scripts/module1_discover_best_target.py'
 
 rule update_target_config:
+    conda:
+        "../environment.yaml"
     input:
         csv="results/module1/candidate_ranking.csv",
         pdb=config["structure"]["clean_pdb"]
@@ -117,6 +169,8 @@ rule update_target_config:
     script: 'scripts/bridge_update_config.py'
 
 rule generate_viz:
+    conda:
+        "../environment.yaml"
     input: pdb=config["evolution"]["conservation_pdb"]
     output: cxc="results/module1/view_scene.cxc"
     params:
@@ -129,11 +183,15 @@ rule generate_viz:
 
 # 1. Minería de Datos (API ChEMBL) + Inyección de Controles
 rule fetch_library:
+    conda:
+        "../environment.yaml"
     output: smi=config["chemistry"]["raw_library"]
     script: 'scripts/fetch_chembl_drugs.py'
 
 # 2. Filtrado Farmacológico (Reglas eNTRy)
 rule filter_ligands:
+    conda:
+        "envs/rdkit.yaml"
     input: smi=config["chemistry"]["raw_library"]
     output:
         filtered=config["chemistry"]["filtered_library"],
@@ -146,6 +204,8 @@ rule filter_ligands:
 
 # 3. Preparación 3D Paralela
 rule prepare_ligands_3d:
+    conda:
+        "envs/rdkit.yaml"
     input: smi=config["chemistry"]["filtered_library"]
     output: touch("results/module2/preparation_done.flag")
     params: out_dir=config["chemistry"]["prepared_dir"]

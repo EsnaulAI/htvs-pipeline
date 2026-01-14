@@ -3,21 +3,36 @@ structure:
   pdb_id: 6OCR
   chain_id: B
   target_residue: 89
+  target_residue_name: GLU
+  target_residue_id: GLU89
+  target_fasta: results/module1/target.fasta
   clean_pdb: results/module1/target_clean.pdb
 evolution:
   n_homologs: 2000
   e_value: 0.001
   msa_file: results/module1/alignment.fasta
   conservation_pdb: results/module1/target_conserved.pdb
+  unaligned_homologs: results/module1/unaligned_homologs.fasta
+  mmseqs_db_dir: data/databases/uniref50
+  mmseqs_tmp_dir: results/module1/tmp_mmseqs
 chemistry:
   zinc_url: http://files.docking.org/2d/BA/BAAB.smi
   raw_library: data/raw/zinc_library.smi
   filtered_library: results/module2/library_filtered.smi
   prepared_dir: results/module2/ligands_3d
+  ligand_id_prefix: module2_
   filters:
     mw_max: 600
     logp_max: 3.5
     must_have_amine: true
+analysis:
+  coevolution_profile: results/module1/coevolution_profile.png
+  dca_distribution: results/module1/dca_distribution.png
+  dca_top_contacts: results/module1/dca_top_contacts.csv
+  network_report: results/module1/network_report.txt
+  nma_profile: results/module1/nma_mobility_profile.png
+visualization:
+  view_scene: results/module1/view_scene.cxc
 docking:
   center_x: -38.15550231933594
   center_y: 0.888374924659729
@@ -25,3 +40,4 @@ docking:
   size_x: 22
   size_y: 22
   size_z: 22
+  gridbox_center: results/module1/gridbox_center.txt
