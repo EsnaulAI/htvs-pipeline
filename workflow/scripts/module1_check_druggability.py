@@ -77,6 +77,13 @@ try:
         f.write(f"SASA_Score: {target_sasa:.2f}\n")
         f.write(f"Global_Mean_SASA: {mean_sasa:.2f}\n")
         f.write(f"Conclusion: {conclusion}\n")
+        f.write("Ghost_Score_Pocket_Weights:\n")
+        f.write("  Pocket_Member_Weight: 20.0\n")
+        f.write("  SASA_Weight: 10.0\n")
+        f.write(
+            "Justification: Se priorizan residuos confirmados por fpocket como parte de un bolsillo "
+            "real, mientras que la SASA normalizada mantiene el criterio de accesibilidad.\n"
+        )
 
     confirm_file(output_report, "reporte de farmacabilidad")
 except Exception as e:
