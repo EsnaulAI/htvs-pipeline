@@ -1,6 +1,28 @@
-import numpy as np
+import sys
+from collections import Counter
+from pathlib import Path
+
 import matplotlib.pyplot as plt
+import numpy as np
+import yaml
 from Bio import AlignIO
+from Bio.PDB import PDBParser
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.append(str(SCRIPT_DIR))
+
+from module1_map_entropy import map_pdb_to_msa
+
+REPO_ROOT = SCRIPT_DIR.parents[1]
+CONFIG_FILE = REPO_ROOT / "config" / "config.yaml"
+
+config = yaml.safe_load(CONFIG_FILE.read_text())
+msa_file = config["evolution"]["msa_file"]
+pdb_file = config["structure"]["clean_pdb"]
+chain_id = config["structure"].get("chain_id")
+target_residue = config["structure"]["target_residue"]
+
+print("🧬 Iniciando Análisis de Co-evolución (Mutual Information)...")
 from collections import Counter
 import sys
 from logging_utils import (
@@ -27,6 +49,24 @@ log_info(f"🧬 Iniciando Análisis de Co-evolución (Mutual Information) para c
 alignment = AlignIO.read(msa_file, "fasta")
 num_seqs = len(alignment)
 aln_len = alignment.get_alignment_length()
+
+# Mapear residuo objetivo PDB -> columna MSA
+parser = PDBParser(QUIET=True)
+structure = parser.get_structure("Target", pdb_file)
+mapping, _, chain_id_used = map_pdb_to_msa(alignment, structure, chain_id=chain_id)
+if target_residue not in mapping:
+    print(
+        "⚠️ Advertencia: no hay correspondencia para el residuo objetivo "
+        f"{target_residue} en la cadena {chain_id_used}. "
+        "Es posible que esté ausente por gaps en el MSA."
+    )
+    sys.exit(1)
+
+target_res_index = mapping[target_residue]
+print(
+    "   Residuo objetivo PDB "
+    f"{target_residue} -> columna MSA {target_res_index + 1}."
+)
 
 # Convertir a matriz numpy para velocidad
 # Codificamos AA como enteros
@@ -60,7 +100,7 @@ def calc_mi(col_i, col_j):
 
 # 2. Calcular MI para el Target contra todos
 mi_scores = []
-target_col = msa_matrix[:, target_res_index] # Asumimos alineación directa por ahora
+target_col = msa_matrix[:, target_res_index]
 
 # Entropía del target (para normalizar)
 h_x = calc_entropy(target_col)
@@ -87,6 +127,10 @@ for j in range(aln_len):
 top_indices = np.argsort(mi_scores)[-5:][::-1] # Top 5
 top_scores = [mi_scores[i] for i in top_indices]
 
+print("\n" + "=" * 40)
+print(f"🔗 REPORTE DE CO-EVOLUCIÓN (Socios de residuo {target_residue})")
+print("=" * 40)
+print(f"Top 5 residuos co-evolucionando con el Target:")
 log_info("=" * 40)
 log_info(f"🔗 REPORTE DE CO-EVOLUCIÓN (Socios de GLU {target_res_index + 1})")
 log_info("=" * 40)
@@ -105,9 +149,11 @@ else:
 # Plot rápido
 plt.figure(figsize=(10, 4))
 plt.plot(mi_scores)
-plt.title(f"Perfil de Co-evolución para Residuo {target_res_index + 1}")
+plt.title(f"Perfil de Co-evolución para Residuo {target_residue}")
 plt.xlabel("Residuo (Columna MSA)")
 plt.ylabel("Información Mutua Normalizada")
+plt.savefig("results/module1/coevolution_profile.png")
+print("   -> Gráfica guardada: results/module1/coevolution_profile.png")
 plt.savefig(output_plot)
 confirm_file(output_plot, "gráfica co-evolución")
 log_info(f"-> Gráfica guardada: {output_plot}")
