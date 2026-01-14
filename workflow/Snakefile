@@ -41,6 +41,17 @@ rule run_blast:
     script: 
         'scripts/module1_run_blast.py'
 
+rule run_mmseqs:
+    input:
+        fasta="results/module1/target.fasta"
+    output:
+        fasta_homologs="results/module1/homologs_unaligned.fasta"
+    threads: 4
+    conda:
+        "workflow/envs/mmseqs.yaml"
+    script:
+        'scripts/module1_run_mmseqs.py'
+
 rule parse_and_align:
     conda:
         "envs/mafft.yaml"
@@ -50,6 +61,8 @@ rule parse_and_align:
     output: 
         fasta_msa=config["evolution"]["msa_file"]
     threads: 4
+    conda:
+        "workflow/envs/mafft.yaml"
     script:
         'scripts/module1_parse_and_align.py'
 
@@ -70,6 +83,8 @@ rule run_pydca:
         plot="results/module1/dca_distribution.png",
         report="results/module1/dca_top_contacts.csv"
     params: target_res=config["structure"]["target_residue"]
+    conda:
+        "workflow/envs/pydca.yaml"
     script: 'scripts/module1_pydca.py'
 
 rule run_coevolution_mi:
@@ -113,6 +128,8 @@ rule run_fpocket:
         "envs/fpocket.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: info="results/module1/pockets/target_clean_info.txt"
+    conda:
+        "workflow/envs/fpocket.yaml"
     shell:
         """
         fpocket -f {input.pdb}
@@ -126,6 +143,8 @@ rule prepare_receptor_phys:
         "envs/openbabel.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: pdbqt="results/module1/target_prepared.pdbqt"
+    conda:
+        "workflow/envs/openbabel.yaml"
     shell:
         "obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4"
 

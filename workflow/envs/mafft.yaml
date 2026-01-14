@@ -1,8 +1,10 @@
+name: htvs-mafft
 name: mafft
 channels:
   - conda-forge
   - bioconda
 dependencies:
+  - mafft>=7.520
   - python>=3.10
   - biopython>=1.79
   - mafft>=7.505
