@@ -25,6 +25,7 @@ if "snakemake" not in globals():
     )
 # ----------------------------------------------------
 import subprocess
+import sys
 from pathlib import Path
 from Bio import SeqIO
 import yaml
@@ -64,6 +65,13 @@ if len(hits) < 5:
     log_warn("⚠️ ADVERTENCIA CRÍTICA: Muy pocas secuencias para análisis evolutivo.")
 
 log_info("🧬 Ejecutando MAFFT (Alineamiento Múltiple)...")
+temp_fasta = homologs_input
+cmd = f"mafft --auto --quiet --thread {threads} {temp_fasta} > {msa_output}"
+try:
+    subprocess.run(cmd, shell=True, check=True)
+except subprocess.CalledProcessError as exc:
+    log_error(f"❌ Error ejecutando MAFFT: {exc}")
+    sys.exit(1)
 cmd = ["mafft", "--auto", "--quiet", "--thread", str(threads), temp_fasta]
 with open(msa_output, "w") as msa_handle, open(mafft_log, "w") as log_handle:
     subprocess.run(cmd, check=True, stdout=msa_handle, stderr=log_handle)
