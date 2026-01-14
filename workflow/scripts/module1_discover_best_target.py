@@ -35,25 +35,28 @@ output_csv = snakemake.output.csv
 confProDy(verbosity='none')
 
 def get_pocket_residues(file_path):
-    """Parsea el archivo info de fpocket o un PDB de pocket para sacar residuos en cavidades."""
+    """Parsea el output de fpocket o un PDB de cavidades para extraer residuos en bolsillos."""
     pocket_res = set()
     if not file_path or not os.path.exists(file_path):
         return pocket_res
 
-    if file_path.lower().endswith(".pdb"):
+    def parse_pocket_pdb(pdb_path):
         parser = PDBParser(QUIET=True)
-        structure = parser.get_structure("Pocket", file_path)
+        structure = parser.get_structure("Pocket", pdb_path)
         for model in structure:
             for chain in model:
                 for res in chain:
                     if res.id[0] == " ":
                         pocket_res.add(res.id[1])
+
+    if file_path.lower().endswith(".pdb"):
+        parse_pocket_pdb(file_path)
         return pocket_res
 
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             for line in f:
-                if re.search(r"\bRes(?:idue|idues)\b", line, re.IGNORECASE):
+                if re.search(r"\bResidues?\b", line, re.IGNORECASE):
                     pocket_res.update(int(res_id) for res_id in re.findall(r"\b\d+\b", line))
     except OSError:
         return pocket_res
@@ -62,16 +65,12 @@ def get_pocket_residues(file_path):
         base_dir = os.path.dirname(file_path)
         candidates = sorted(
             glob.glob(os.path.join(base_dir, "*pocket*.pdb")) +
+            glob.glob(os.path.join(base_dir, "*pocket*_atm.pdb")) +
+            glob.glob(os.path.join(base_dir, "*pocket*_vert.pdb")) +
             glob.glob(os.path.join(base_dir, "pocket*.pdb"))
         )
         for candidate in candidates:
-            parser = PDBParser(QUIET=True)
-            structure = parser.get_structure("Pocket", candidate)
-            for model in structure:
-                for chain in model:
-                    for res in chain:
-                        if res.id[0] == " ":
-                            pocket_res.add(res.id[1])
+            parse_pocket_pdb(candidate)
     return pocket_res
 
 require_file(pdb_file, "PDB conservado")
@@ -138,8 +137,10 @@ for res in residues:
     # --- FILTRO DE DRUGGABILITY ---
     sasa_norm = (sasa - sasa_min) / sasa_range
     pocket_member = 1.0 if res_id in pocket_residues else 0.0
-    # Fórmula nueva: pocket_term = Wp * (0.7 * SASA_norm + 0.3 * pocket_member)
-    pocket_term = 30.0 * (0.7 * sasa_norm + 0.3 * pocket_member)
+    # Fórmula nueva: pocket_term = (Wpocket * pocket_member) + (Wsasa * SASA_norm)
+    pocket_weight = 20.0
+    sasa_weight = 10.0
+    pocket_term = (pocket_weight * pocket_member) + (sasa_weight * sasa_norm)
         
     # Fórmula Maestra
     final_score = (cons_score * 3.0) + (cent_score * 50.0) + (rigidity * 1.5) + pocket_term
