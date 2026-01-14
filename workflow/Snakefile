@@ -10,6 +10,7 @@ rule all:
         "results/module1/candidate_ranking.csv",
         "results/module1/coevolution_profile.png",
         "results/module1/config_updated.flag",
+        "results/module1/msa_qc_report.csv",
         "results/module1/target_prepared.pdbqt",
         "results/module1/view_scene.cxc",
         "results/module2/preparation_done.flag"
@@ -72,11 +73,24 @@ rule parse_and_align:
     script:
         'scripts/module1_parse_and_align.py'
 
+rule msa_qc:
+    conda:
+        "../environment.yaml"
+    input:
+        msa=config["evolution"]["msa_file"]
+    output:
+        report=config["evolution"]["msa_qc_report"]
+    script:
+        'scripts/module1_msa_qc.py'
+
 rule map_conservation:
     conda:
         "../environment.yaml"
     input:
         pdb=config["structure"]["clean_pdb"],
+        msa=config["evolution"]["msa_file"],
+        qc_report=config["evolution"]["msa_qc_report"]
+    output: pdb_conserved=config["evolution"]["conservation_pdb"]
         msa=config["evolution"]["msa_file"]
     output:
         pdb_conserved=config["evolution"]["conservation_pdb"],

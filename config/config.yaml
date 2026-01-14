@@ -12,6 +12,7 @@ evolution:
   e_value: 0.001
   use_mmseqs: false
   msa_file: results/module1/alignment.fasta
+  msa_qc_report: results/module1/msa_qc_report.csv
   conservation_pdb: results/module1/target_conserved.pdb
   pdb_msa_map: results/module1/pdb_to_msa_map.json
   unaligned_homologs: results/module1/unaligned_homologs.fasta
