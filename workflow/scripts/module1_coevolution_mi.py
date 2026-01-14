@@ -12,6 +12,13 @@ def load_config():
         return yaml.safe_load(f)
 
 config = load_config()
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_info,
+    log_warn,
+    require_file,
+)
 
 # Inputs
 msa_file = config["evolution"]["msa_file"]
@@ -20,8 +27,12 @@ target_res_name = config["structure"]["target_residue_name"]
 output_plot = config["analysis"]["coevolution_profile"]
 # NOTA: En un pipeline real estricto, debemos alinear índice PDB <-> índice MSA. 
 # Aquí asumiremos que el MSA mantiene la numeración aproximada tras recortar gaps principales.
+output_plot = "results/module1/coevolution_profile.png"
 
-print(f"🧬 Iniciando Análisis de Co-evolución (Mutual Information) para columna ~{target_res_index}...")
+require_file(msa_file, "MSA de entrada")
+ensure_parent_dir(output_plot)
+
+log_info(f"🧬 Iniciando Análisis de Co-evolución (Mutual Information) para columna ~{target_res_index}...")
 
 # 1. Cargar MSA
 alignment = AlignIO.read(msa_file, "fasta")
@@ -65,7 +76,7 @@ target_col = msa_matrix[:, target_res_index] # Asumimos alineación directa por 
 # Entropía del target (para normalizar)
 h_x = calc_entropy(target_col)
 
-print("   Calculando correlaciones (esto toma unos segundos)...")
+log_info("Calculando correlaciones (esto toma unos segundos)...")
 for j in range(aln_len):
     if j == target_res_index:
         mi_scores.append(0)
@@ -91,16 +102,20 @@ print("\n" + "="*40)
 print(f"🔗 REPORTE DE CO-EVOLUCIÓN (Socios de {target_res_name} {target_res_index + 1})")
 print("="*40)
 print(f"Top 5 residuos co-evolucionando con el Target:")
+log_info("=" * 40)
+log_info(f"🔗 REPORTE DE CO-EVOLUCIÓN (Socios de GLU {target_res_index + 1})")
+log_info("=" * 40)
+log_info("Top 5 residuos co-evolucionando con el Target:")
 for idx, score in zip(top_indices, top_scores):
     # Aquí el índice es del MSA, correspondería mapearlo al PDB en un caso ideal
-    print(f"   Columna MSA {idx + 1}: NMI = {score:.4f}")
+    log_info(f"Columna MSA {idx + 1}: NMI = {score:.4f}")
 
 if max(top_scores) > 0.1:
-    print("\n✅ CONCLUSIÓN: Existen señales de co-evolución.")
-    print("   El residuo 'habla' con otros sitios a distancia.")
+    log_info("✅ CONCLUSIÓN: Existen señales de co-evolución.")
+    log_info("El residuo 'habla' con otros sitios a distancia.")
 else:
-    print("\n⚠️ CONCLUSIÓN: Baja señal de co-evolución.")
-    print("   El residuo podría ser independiente o muy conservado (si no cambia, no co-evoluciona).")
+    log_warn("⚠️ CONCLUSIÓN: Baja señal de co-evolución.")
+    log_warn("El residuo podría ser independiente o muy conservado (si no cambia, no co-evoluciona).")
 
 # Plot rápido
 plt.figure(figsize=(10, 4))
@@ -110,3 +125,5 @@ plt.xlabel("Residuo (Columna MSA)")
 plt.ylabel("Información Mutua Normalizada")
 plt.savefig(output_plot)
 print(f"   -> Gráfica guardada: {output_plot}")
+confirm_file(output_plot, "gráfica co-evolución")
+log_info(f"-> Gráfica guardada: {output_plot}")

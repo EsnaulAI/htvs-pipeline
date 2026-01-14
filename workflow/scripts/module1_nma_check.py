@@ -29,6 +29,14 @@ import numpy as np
 # Importar explícitamente las funciones de ProDy
 from prody import parsePDB, ANM, calcSqFlucts, confProDy
 import yaml
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_error,
+    log_info,
+    log_warn,
+    require_file,
+)
 
 # Configuración silenciosa
 confProDy(verbosity='none')
@@ -40,14 +48,16 @@ def load_config():
 
 def run_nma_analysis(pdb_file, chain_id, target_res_num, target_res_name, output_img):
     print(f"🌊 Iniciando Análisis de Modos Normales (ANM) para {pdb_file}...")
+def run_nma_analysis(pdb_file, chain_id, target_res_num, output_img):
+    log_info(f"🌊 Iniciando Análisis de Modos Normales (ANM) para {pdb_file}...")
     
     # 1. Cargar estructura
     structure = parsePDB(pdb_file)
     calphas = structure.select(f'chain {chain_id} and calpha')
     
     if calphas is None:
-        print(f"❌ Error: No se encontraron Carbonos Alpha en la cadena {chain_id}")
-        return
+        log_error(f"❌ Error: No se encontraron Carbonos Alpha en la cadena {chain_id}")
+        sys.exit(1)
 
     # 2. Construir Modelo Elástico (ANM)
     anm = ANM('AdeB dynamics')
@@ -64,15 +74,17 @@ def run_nma_analysis(pdb_file, chain_id, target_res_num, target_res_name, output
         target_fluct = sq_flucts[target_idx]
         print(f"\n🔍 ANÁLISIS DE MOVILIDAD PARA {target_res_name} {target_res_num}:")
         print(f"   Fluctuación Cuadrática: {target_fluct:.4f} Å²")
+        log_info(f"🔍 ANÁLISIS DE MOVILIDAD PARA GLU {target_res_num}:")
+        log_info(f"Fluctuación Cuadrática: {target_fluct:.4f} Å²")
         
         mean_fluct = np.mean(sq_flucts)
         if target_fluct < mean_fluct:
-            print("   CONCLUSIÓN: Es una zona RÍGIDA (Posible ancla o bisagra estática).")
+            log_info("CONCLUSIÓN: Es una zona RÍGIDA (Posible ancla o bisagra estática).")
         else:
-            print("   CONCLUSIÓN: Es una zona FLEXIBLE (Posible loop o puerta).")
+            log_info("CONCLUSIÓN: Es una zona FLEXIBLE (Posible loop o puerta).")
             
     except ValueError:
-        print(f"⚠️ El residuo {target_res_num} no está en la selección analizada.")
+        log_warn(f"⚠️ El residuo {target_res_num} no está en la selección analizada.")
 
     # 4. Generar Gráfica
     plt.figure(figsize=(10, 5))
@@ -89,7 +101,8 @@ def run_nma_analysis(pdb_file, chain_id, target_res_num, target_res_name, output
     
     # Guardar gráfica
     plt.savefig(output_img, dpi=300)
-    print(f"\n📊 Gráfica guardada en: {output_img}")
+    confirm_file(output_img, "gráfica NMA")
+    log_info(f"📊 Gráfica guardada en: {output_img}")
 
 if __name__ == "__main__":
     # Obtener parámetros desde Snakemake
@@ -104,3 +117,7 @@ if __name__ == "__main__":
     out_plot = snakemake.output.plot
     
     run_nma_analysis(pdb_in, chain_in, res_in, target_res_name, out_plot)
+    require_file(pdb_in, "PDB de entrada")
+    ensure_parent_dir(out_plot)
+
+    run_nma_analysis(pdb_in, chain_in, res_in, out_plot)

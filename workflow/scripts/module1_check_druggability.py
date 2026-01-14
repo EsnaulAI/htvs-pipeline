@@ -15,6 +15,13 @@ if "snakemake" not in globals():
 from Bio.PDB import PDBParser, SASA
 import numpy as np
 import sys
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_error,
+    log_info,
+    require_file,
+)
 
 # Inputs
 pdb_file = snakemake.input.pdb
@@ -22,7 +29,10 @@ chain_id = snakemake.params.chain
 target_res_num = int(snakemake.params.target_res)
 output_report = snakemake.output.report
 
-print(f"💧 Calculando Farmacabilidad (SASA) para {chain_id}:{target_res_num}...")
+require_file(pdb_file, "PDB de entrada")
+ensure_parent_dir(output_report)
+
+log_info(f"💧 Calculando Farmacabilidad (SASA) para {chain_id}:{target_res_num}...")
 
 try:
     parser = PDBParser(QUIET=True)
@@ -48,9 +58,9 @@ try:
     mean_sasa = np.mean(all_sasa) if all_sasa else 0
 
     # 2. Diagnóstico
-    print(f"\n📊 DIAGNÓSTICO DE ACCESIBILIDAD:")
-    print(f"   SASA del Target: {target_sasa:.2f} Å²")
-    print(f"   Promedio Proteína: {mean_sasa:.2f} Å²")
+    log_info("📊 DIAGNÓSTICO DE ACCESIBILIDAD:")
+    log_info(f"SASA del Target: {target_sasa:.2f} Å²")
+    log_info(f"Promedio Proteína: {mean_sasa:.2f} Å²")
 
     conclusion = ""
     if target_sasa < 5:
@@ -60,7 +70,7 @@ try:
     else:
         conclusion = "⚠️ EXPOSED (Expuesto): Superficie muy abierta. Difícil selectividad."
 
-    print(f"   -> {conclusion}")
+    log_info(f"-> {conclusion}")
 
     with open(output_report, "w") as f:
         f.write(f"Target Residue: {target_res_num}\n")
@@ -68,8 +78,10 @@ try:
         f.write(f"Global_Mean_SASA: {mean_sasa:.2f}\n")
         f.write(f"Conclusion: {conclusion}\n")
 
+    confirm_file(output_report, "reporte de farmacabilidad")
 except Exception as e:
-    print(f"❌ Error calculando SASA: {e}")
+    log_error(f"❌ Error calculando SASA: {e}")
     # Generar reporte de error para no romper el pipeline
     with open(output_report, "w") as f:
         f.write("Error calculation SASA\n")
+    confirm_file(output_report, "reporte de farmacabilidad")

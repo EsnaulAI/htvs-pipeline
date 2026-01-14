@@ -37,6 +37,14 @@ def load_config():
     config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_error,
+    log_info,
+    log_warn,
+    require_file,
+)
 
 xml_input = snakemake.input.xml
 orig_fasta = snakemake.input.original_fasta
@@ -44,7 +52,11 @@ msa_output = snakemake.output.fasta_msa
 threads = snakemake.threads
 config = load_config()
 
-print(f"📖 Leyendo resultados XML y preparando alineamiento...")
+require_file(xml_input, "XML de BLAST")
+require_file(orig_fasta, "FASTA original")
+ensure_parent_dir(msa_output)
+
+log_info("📖 Leyendo resultados XML y preparando alineamiento...")
 
 hits = []
 # Leemos nuestra secuencia original primero
@@ -67,20 +79,22 @@ try:
                 rec = SeqRecord(seq, id=alignment.hit_id, description=alignment.hit_def)
                 hits.append(rec)
 except Exception as e:
-    print(f"❌ Error leyendo XML: {e}")
+    log_error(f"❌ Error leyendo XML: {e}")
     sys.exit(1)
 
-print(f"   -> Se encontraron {len(hits)} secuencias homólogas válidas.")
+log_info(f"Se encontraron {len(hits)} secuencias homólogas válidas.")
 
 if len(hits) < 5:
-    print("⚠️ ADVERTENCIA CRÍTICA: Muy pocas secuencias para análisis evolutivo.")
+    log_warn("⚠️ ADVERTENCIA CRÍTICA: Muy pocas secuencias para análisis evolutivo.")
 
 # Guardar temporalmente
 temp_fasta = config["evolution"]["unaligned_homologs"]
 SeqIO.write(hits, temp_fasta, "fasta")
 
-print(f"🧬 Ejecutando MAFFT (Alineamiento Múltiple)...")
+log_info("🧬 Ejecutando MAFFT (Alineamiento Múltiple)...")
 cmd = f"mafft --auto --quiet --thread {threads} {temp_fasta} > {msa_output}"
 subprocess.run(cmd, shell=True, check=True)
 
 print("✅ Alineamiento completado.")
+confirm_file(msa_output, "MSA generado")
+log_info("✅ Alineamiento completado.")
