@@ -2,17 +2,36 @@
 
 # --- MOCK PARA DESARROLLO ---
 if "snakemake" not in globals():
+    from pathlib import Path
     from types import SimpleNamespace
+    import yaml
+
+    def load_config():
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+
+    config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(pdb="results/module1/target_conserved.pdb"),
-        output=SimpleNamespace(coords="results/module1/gridbox_center.txt"),
-        params=SimpleNamespace(chain="B", target_res=513)
+        input=SimpleNamespace(pdb=config["evolution"]["conservation_pdb"]),
+        output=SimpleNamespace(coords=config["docking"]["gridbox_center"]),
+        params=SimpleNamespace(
+            chain=config["structure"]["chain_id"],
+            target_res=config["structure"]["target_residue"],
+        )
     )
 # ----------------------------
 
+from pathlib import Path
 import numpy as np
 from Bio.PDB import PDBParser
 import sys
+import yaml
+
+def load_config():
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
 
 pdb_file = snakemake.input.pdb
 chain_id = snakemake.params.chain

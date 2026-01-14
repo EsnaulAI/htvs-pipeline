@@ -1,17 +1,37 @@
 # --- MOCK PARA DESARROLLO ---
 if "snakemake" not in globals():
+    from pathlib import Path
     from types import SimpleNamespace
+    import yaml
+
+    def load_config():
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+
+    config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(pdb="results/module1/target_conserved.pdb"),
-        output=SimpleNamespace(report="results/module1/network_report.txt"),
-        params=SimpleNamespace(chain="B", target_res=513)
+        input=SimpleNamespace(pdb=config["evolution"]["conservation_pdb"]),
+        output=SimpleNamespace(report=config["analysis"]["network_report"]),
+        params=SimpleNamespace(
+            chain=config["structure"]["chain_id"],
+            target_res=config["structure"]["target_residue"],
+            target_res_name=config["structure"]["target_residue_name"],
+        )
     )
 # ----------------------------
 
+from pathlib import Path
 import networkx as nx
 import numpy as np
 from Bio.PDB import PDBParser
 import sys
+import yaml
+
+def load_config():
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
 
 # Inputs
 pdb_file = snakemake.input.pdb
@@ -20,6 +40,8 @@ chain_id = snakemake.params.chain
 # --- CAMBIO CRÍTICO: Recibir variable desde Config ---
 target_residue = int(snakemake.params.target_res)
 # ---------------------------------------------------
+config = load_config()
+target_res_name = snakemake.params.target_res_name if hasattr(snakemake.params, "target_res_name") else config["structure"]["target_residue_name"]
 
 output_report = snakemake.output.report
 
@@ -70,7 +92,7 @@ with open(output_report, "w") as f:
     f.write(f"Ranking: #{rank} de {len(residues)}\n")
     
     print("\n" + "="*40)
-    print(f"📊 REPORTE DE RED PARA GLU {target_residue}")
+    print(f"📊 REPORTE DE RED PARA {target_res_name} {target_residue}")
     print(f"Centralidad: {my_score:.4f} (Max en proteína: {max_score:.4f})")
     print(f"Ranking: #{rank} de {len(residues)} residuos")
 

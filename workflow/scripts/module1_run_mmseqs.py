@@ -1,10 +1,24 @@
 # --- MOCK PARA DESARROLLO ---
 if "snakemake" not in globals():
+    from pathlib import Path
     from types import SimpleNamespace
+    import yaml
+
+    def load_config():
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+
+    config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(pdb="", fasta="results/module1/target.fasta", xml="", original_fasta="", msa=""),
-        output=SimpleNamespace(pdb="", fasta="", xml="", fasta_msa="", fasta_homologs="results/module1/homologs_unaligned.fasta"),
-        params=SimpleNamespace(pdb_id="7KGY", chain="B", n_hits=10, e_val=0.001),
+        input=SimpleNamespace(pdb="", fasta=config["structure"]["target_fasta"], xml="", original_fasta="", msa=""),
+        output=SimpleNamespace(pdb="", fasta="", xml="", fasta_msa="", fasta_homologs=config["evolution"]["unaligned_homologs"]),
+        params=SimpleNamespace(
+            pdb_id=config["structure"]["pdb_id"],
+            chain=config["structure"]["chain_id"],
+            n_hits=config["evolution"]["n_homologs"],
+            e_val=config["evolution"]["e_value"],
+        ),
         threads=4,
         wildcards=SimpleNamespace()
     )
@@ -16,11 +30,19 @@ import os
 import sys
 import shutil
 from Bio import SeqIO
+from pathlib import Path
+import yaml
+
+def load_config():
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
 
 # Inputs/Outputs (Snakemake)
 query_fasta = snakemake.input.fasta
 out_msa_ready = snakemake.output.fasta_homologs
-db_dir = "data/databases/uniref50" 
+config = load_config()
+db_dir = config["evolution"]["mmseqs_db_dir"]
 threads = snakemake.threads
 
 # --- PARÁMETROS AGRESIVOS (Corrección) ---
@@ -35,7 +57,7 @@ min_id = 0.05
 # -----------------------------------------
 
 db_target = os.path.join(db_dir, "uniref50_db")
-tmp_dir = "results/module1/tmp_mmseqs"
+tmp_dir = config["evolution"]["mmseqs_tmp_dir"]
 
 print(f"🚀 Iniciando Búsqueda Profunda MMseqs2 (Sensibilidad {sensitivity})...")
 

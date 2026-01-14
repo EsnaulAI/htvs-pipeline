@@ -1,12 +1,23 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from Bio import AlignIO
+from pathlib import Path
 from collections import Counter
+from Bio import AlignIO
+import matplotlib.pyplot as plt
+import numpy as np
 import sys
+import yaml
+
+def load_config():
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
+
+config = load_config()
 
 # Inputs
-msa_file = "results/module1/alignment.fasta"
-target_res_index = 513 - 1 # Ajuste de índice (PDB 513 -> Array 512 si empieza en 1, pero depende del mapeo. Usaremos aproximado)
+msa_file = config["evolution"]["msa_file"]
+target_res_index = config["structure"]["target_residue"] - 1
+target_res_name = config["structure"]["target_residue_name"]
+output_plot = config["analysis"]["coevolution_profile"]
 # NOTA: En un pipeline real estricto, debemos alinear índice PDB <-> índice MSA. 
 # Aquí asumiremos que el MSA mantiene la numeración aproximada tras recortar gaps principales.
 
@@ -77,7 +88,7 @@ top_indices = np.argsort(mi_scores)[-5:][::-1] # Top 5
 top_scores = [mi_scores[i] for i in top_indices]
 
 print("\n" + "="*40)
-print(f"🔗 REPORTE DE CO-EVOLUCIÓN (Socios de GLU {target_res_index + 1})")
+print(f"🔗 REPORTE DE CO-EVOLUCIÓN (Socios de {target_res_name} {target_res_index + 1})")
 print("="*40)
 print(f"Top 5 residuos co-evolucionando con el Target:")
 for idx, score in zip(top_indices, top_scores):
@@ -97,5 +108,5 @@ plt.plot(mi_scores)
 plt.title(f"Perfil de Co-evolución para Residuo {target_res_index + 1}")
 plt.xlabel("Residuo (Columna MSA)")
 plt.ylabel("Información Mutua Normalizada")
-plt.savefig("results/module1/coevolution_profile.png")
-print("   -> Gráfica guardada: results/module1/coevolution_profile.png")
+plt.savefig(output_plot)
+print(f"   -> Gráfica guardada: {output_plot}")
