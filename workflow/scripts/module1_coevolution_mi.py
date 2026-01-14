@@ -47,16 +47,15 @@ from logging_utils import (
 
 # Inputs
 msa_file = config["evolution"]["msa_file"]
-target_res_index = config["structure"]["target_residue"] - 1
 target_res_name = config["structure"]["target_residue_name"]
 output_plot = config["analysis"]["coevolution_profile"]
 msa_file = "results/module1/alignment.fasta"
 try:
     target_residue = int(snakemake.params.target_res)
 except NameError:
-    target_residue = 513
-target_res_index = target_residue - 1 # Ajuste de índice (PDB -> Array si empieza en 1, pero depende del mapeo. Usaremos aproximado)
-# NOTA: En un pipeline real estricto, debemos alinear índice PDB <-> índice MSA. 
+    target_residue = config["structure"]["target_residue"]
+target_res_index = target_residue - 1  # Ajuste de índice (PDB -> Array si empieza en 1, pero depende del mapeo. Usaremos aproximado)
+# NOTA: En un pipeline real estricto, debemos alinear índice PDB <-> índice MSA.
 # Aquí asumiremos que el MSA mantiene la numeración aproximada tras recortar gaps principales.
 output_plot = "results/module1/coevolution_profile.png"
 

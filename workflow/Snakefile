@@ -90,7 +90,8 @@ rule run_pydca:
 rule run_coevolution_mi:
     input: msa=config["evolution"]["msa_file"]
     output: plot="results/module1/coevolution_profile.png"
-    params: target_res=config["structure"]["target_residue"]
+    params:
+        target_res=config["structure"]["target_residue"]
     script: 'scripts/module1_coevolution_mi.py'
 
 rule run_network_analysis:
