@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 # Ignorar carpetas de datos pesados
 data/databases/
 data/raw/
@@ -37,3 +36,5 @@ envs/
 !results/module3/final_ranking.csv
 !results/.gitkeep
 !envs/.gitkeep
+!workflow/envs/
+!workflow/envs/*.yaml
