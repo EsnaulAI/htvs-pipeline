@@ -16,6 +16,14 @@ import os
 import sys
 import shutil
 from Bio import SeqIO
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_error,
+    log_info,
+    log_warn,
+    require_file,
+)
 
 # Inputs/Outputs (Snakemake)
 query_fasta = snakemake.input.fasta
@@ -37,23 +45,26 @@ min_id = 0.05
 db_target = os.path.join(db_dir, "uniref50_db")
 tmp_dir = "results/module1/tmp_mmseqs"
 
-print(f"🚀 Iniciando Búsqueda Profunda MMseqs2 (Sensibilidad {sensitivity})...")
+require_file(query_fasta, "FASTA de entrada")
+ensure_parent_dir(out_msa_ready)
+
+log_info(f"🚀 Iniciando Búsqueda Profunda MMseqs2 (Sensibilidad {sensitivity})...")
 
 if os.path.exists(tmp_dir): shutil.rmtree(tmp_dir)
 os.makedirs(tmp_dir, exist_ok=True)
 os.makedirs(db_dir, exist_ok=True)
 
 def run_cmd(cmd):
-    print(f"   CMD: {cmd}")
+    log_info(f"CMD: {cmd}")
     try:
         subprocess.run(cmd, shell=True, check=True)
     except subprocess.CalledProcessError:
-        print("❌ Error ejecutando MMseqs2.")
+        log_error("❌ Error ejecutando MMseqs2.")
         sys.exit(1)
 
 # 1. Base de Datos
 if not os.path.exists(db_target + ".dbtype"):
-    print("   ⬇️ Descargando UniRef50...")
+    log_info("⬇️ Descargando UniRef50...")
     run_cmd(f"mmseqs databases UniRef50 {db_target} {tmp_dir}")
 
 # 2. Búsqueda Iterativa
@@ -77,7 +88,7 @@ fasta_res = os.path.join(tmp_dir, "results.fasta")
 run_cmd(f"mmseqs result2flat {query_db} {db_target} {result_db} {fasta_res} --use-fasta-header")
 
 # 4. Filtrado Inteligente
-print("   QC: Filtrando resultados redundantes o basura...")
+log_info("QC: Filtrando resultados redundantes o basura...")
 original_rec = SeqIO.read(query_fasta, "fasta")
 found_recs = list(SeqIO.parse(fasta_res, "fasta"))
 
@@ -98,10 +109,11 @@ for rec in found_recs:
     unique_recs.append(rec)
     seen_seqs.add(s_str)
 
-print(f"   📊 Secuencias encontradas: {len(found_recs)}")
-print(f"   ✅ Secuencias únicas válidas: {len(unique_recs)}")
+log_info(f"📊 Secuencias encontradas: {len(found_recs)}")
+log_info(f"✅ Secuencias únicas válidas: {len(unique_recs)}")
 
 if len(unique_recs) < 50:
-    print("⚠️ ALERTA: Aún tenemos pocas secuencias. La conservación será poco confiable.")
+    log_warn("⚠️ ALERTA: Aún tenemos pocas secuencias. La conservación será poco confiable.")
 
 SeqIO.write(unique_recs, out_msa_ready, "fasta")
+confirm_file(out_msa_ready, "FASTA de homologos")

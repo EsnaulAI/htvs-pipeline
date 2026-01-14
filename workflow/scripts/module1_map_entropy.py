@@ -13,6 +13,12 @@ if "snakemake" not in globals():
 import math
 from Bio import AlignIO
 from Bio.PDB import PDBParser, PDBIO
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_info,
+    require_file,
+)
 
 pdb_input = snakemake.input.pdb
 msa_input = snakemake.input.msa
@@ -53,7 +59,11 @@ def calculate_shannon_entropy(alignment):
         
     return entropy_scores
 
-print("🧮 Calculando conservación evolutiva...")
+require_file(pdb_input, "PDB de entrada")
+require_file(msa_input, "MSA de entrada")
+ensure_parent_dir(pdb_output)
+
+log_info("🧮 Calculando conservación evolutiva...")
 alignment = AlignIO.read(msa_input, "fasta")
 scores = calculate_shannon_entropy(alignment)
 
@@ -69,7 +79,7 @@ pdb_residues = list(structure.get_residues())
 msa_index = 0
 pdb_index = 0
 
-print("🎨 Inyectando puntuaciones en el factor B del PDB...")
+log_info("🎨 Inyectando puntuaciones en el factor B del PDB...")
 
 for msa_char in target_seq_in_msa:
     score = scores[msa_index]
@@ -90,5 +100,6 @@ io = PDBIO()
 io.set_structure(structure)
 io.save(pdb_output)
 
-print(f"✅ ¡Éxito! Archivo generado: {pdb_output}")
-print("   -> Abre este archivo en PyMOL y colorea por B-factor para ver la conservación.")
+confirm_file(pdb_output, "PDB con conservación")
+log_info(f"✅ ¡Éxito! Archivo generado: {pdb_output}")
+log_info("-> Abre este archivo en PyMOL y colorea por B-factor para ver la conservación.")
