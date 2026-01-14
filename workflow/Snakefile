@@ -89,12 +89,10 @@ rule map_conservation:
     input:
         pdb=config["structure"]["clean_pdb"],
         msa=config["evolution"]["msa_file"],
-        qc_report=config["evolution"]["msa_qc_report"]
-    output: pdb_conserved=config["evolution"]["conservation_pdb"]
-        msa=config["evolution"]["msa_file"]
+        qc_report=config["evolution"]["msa_qc_report"],
     output:
         pdb_conserved=config["evolution"]["conservation_pdb"],
-        pdb_msa_map=config["evolution"]["pdb_msa_map"]
+        pdb_msa_map=config["evolution"]["pdb_msa_map"],
     script: 'scripts/module1_map_entropy.py'
 
 rule run_pydca:
