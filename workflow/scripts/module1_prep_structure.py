@@ -12,6 +12,12 @@ if "snakemake" not in globals():
 # ----------------------------------------------------
 import sys
 from Bio.PDB import PDBList, PDBParser, Select, PDBIO, Polypeptide
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_error,
+    log_info,
+)
 
 # Snakemake injects inputs/outputs/params automatically
 pdb_id = snakemake.params.pdb_id
@@ -19,7 +25,10 @@ chain_target = snakemake.params.chain
 out_pdb = snakemake.output.pdb
 out_fasta = snakemake.output.fasta
 
-print(f"🔬 Iniciando descarga y limpieza de {pdb_id} cadena {chain_target}...")
+ensure_parent_dir(out_pdb)
+ensure_parent_dir(out_fasta)
+
+log_info(f"🔬 Iniciando descarga y limpieza de {pdb_id} cadena {chain_target}...")
 
 # 1. Descargar
 pdbl = PDBList()
@@ -45,15 +54,17 @@ ppb = Polypeptide.PPBuilder()
 peptides = ppb.build_peptides(structure[0][chain_target])
 
 if len(peptides) == 0:
-    print("❌ Error Crítico: No se encontraron péptidos en la cadena especificada.")
+    log_error("❌ Error Crítico: No se encontraron péptidos en la cadena especificada.")
     sys.exit(1)
 
 # Aquí está el arreglo: Unimos todos los fragmentos en una sola string
 full_seq = "".join([str(pp.get_sequence()) for pp in peptides])
 
-print(f"ℹ️  Nota: La estructura tiene {len(peptides)} fragmentos. Se han unido para el análisis BLAST.")
+log_info(f"ℹ️  Nota: La estructura tiene {len(peptides)} fragmentos. Se han unido para el análisis BLAST.")
 
 with open(out_fasta, "w") as f:
     f.write(f">{pdb_id}_{chain_target}\n{full_seq}\n")
 
-print("✅ Estructura limpia y secuencia unificada extraída.")
+confirm_file(out_pdb, "PDB limpio")
+confirm_file(out_fasta, "FASTA de salida")
+log_info("✅ Estructura limpia y secuencia unificada extraída.")
