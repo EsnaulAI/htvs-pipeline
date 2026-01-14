@@ -47,8 +47,6 @@ def load_config():
         return yaml.safe_load(f)
 
 def run_nma_analysis(pdb_file, chain_id, target_res_num, target_res_name, output_img):
-    print(f"🌊 Iniciando Análisis de Modos Normales (ANM) para {pdb_file}...")
-def run_nma_analysis(pdb_file, chain_id, target_res_num, output_img):
     log_info(f"🌊 Iniciando Análisis de Modos Normales (ANM) para {pdb_file}...")
     
     # 1. Cargar estructura
@@ -67,6 +65,16 @@ def run_nma_analysis(pdb_file, chain_id, target_res_num, output_img):
     # 3. Calcular Fluctuaciones
     sq_flucts = calcSqFlucts(anm)
     res_nums = calphas.getResnums()
+    min_res = int(np.min(res_nums))
+    max_res = int(np.max(res_nums))
+    log_info(f"Rango real de residuos en cadena {chain_id}: {min_res} - {max_res}")
+
+    if target_res_num not in res_nums:
+        log_error(
+            f"❌ Residuo objetivo {target_res_num} no encontrado en cadena {chain_id}. "
+            f"Rango real: {min_res}-{max_res}."
+        )
+        sys.exit(1)
     
     # Buscar nuestro residuo objetivo
     try:
@@ -120,4 +128,4 @@ if __name__ == "__main__":
     require_file(pdb_in, "PDB de entrada")
     ensure_parent_dir(out_plot)
 
-    run_nma_analysis(pdb_in, chain_in, res_in, out_plot)
+    run_nma_analysis(pdb_in, chain_in, res_in, target_res_name, out_plot)
