@@ -17,6 +17,8 @@ from Bio.PDB import PDBParser, SASA
 import numpy as np
 import re
 import sys
+import os
+import glob
 
 # Inputs
 pdb_file = snakemake.input.pdb
@@ -27,21 +29,50 @@ output_csv = snakemake.output.csv
 confProDy(verbosity='none')
 
 def get_pocket_residues(file_path):
-    """Parsea el archivo info de fpocket para sacar residuos en cavidades."""
+    """Parsea el archivo info de fpocket o un PDB de pocket para sacar residuos en cavidades."""
     pocket_res = set()
+    if not file_path or not os.path.exists(file_path):
+        return pocket_res
+
+    if file_path.lower().endswith(".pdb"):
+        parser = PDBParser(QUIET=True)
+        structure = parser.get_structure("Pocket", file_path)
+        for model in structure:
+            for chain in model:
+                for res in chain:
+                    if res.id[0] == " ":
+                        pocket_res.add(res.id[1])
+        return pocket_res
+
     try:
         with open(file_path, 'r') as f:
-            lines = f.readlines()
-            # Buscamos patrones simples de índices de residuos si existen en el reporte
-            # Nota: fpocket info es complejo. Una heurística simple es confiar 
-            # en la combinación de SASA y el archivo PDB de pockets si se usara.
-            # Aquí usamos SASA como proxy principal y fpocket como bono si logramos parsearlo.
-            pass 
-    except:
-        pass
+            for line in f:
+                if re.search(r"\bRes(?:idue|idues)\b", line, re.IGNORECASE):
+                    pocket_res.update(int(res_id) for res_id in re.findall(r"\b\d+\b", line))
+    except OSError:
+        return pocket_res
+
+    if not pocket_res:
+        base_dir = os.path.dirname(file_path)
+        candidates = sorted(
+            glob.glob(os.path.join(base_dir, "*pocket*.pdb")) +
+            glob.glob(os.path.join(base_dir, "pocket*.pdb"))
+        )
+        for candidate in candidates:
+            parser = PDBParser(QUIET=True)
+            structure = parser.get_structure("Pocket", candidate)
+            for model in structure:
+                for chain in model:
+                    for res in chain:
+                        if res.id[0] == " ":
+                            pocket_res.add(res.id[1])
     return pocket_res
 
 print(f"🕵️ Explorando candidatos en cadena {chain_id}...")
+
+# Residuos en cavidades reales (fpocket)
+pocket_residues = get_pocket_residues(pocket_file)
+print(f"   🧩 Residuos en pockets detectados: {len(pocket_residues)}")
 
 # 1. Cargar Estructura
 parser = PDBParser(QUIET=True)
@@ -77,6 +108,11 @@ data = []
 
 print("   📊 Evaluando residuos...")
 
+sasa_values = [res.sasa if hasattr(res, 'sasa') else 0 for res in residues]
+sasa_min = min(sasa_values) if sasa_values else 0
+sasa_max = max(sasa_values) if sasa_values else 0
+sasa_range = max(sasa_max - sasa_min, 1e-6)
+
 for res in residues:
     res_id = res.id[1]
     
@@ -90,18 +126,13 @@ for res in residues:
     sasa = res.sasa if hasattr(res, 'sasa') else 0
     
     # --- FILTRO DE DRUGGABILITY ---
-    pocket_bonus = 0.0
-    
-    # Rango ideal de SASA para un bolsillo: 10 - 80 Angstroms^2
-    if 10.0 <= sasa <= 80.0:
-        pocket_bonus = 30.0 # Es accesible y cóncavo
-    elif sasa < 5.0:
-        pocket_bonus = -100.0 # ENTERRADO (Como el residuo 513 antiguo) - PENALIZAR
-    elif sasa > 100.0:
-        pocket_bonus = -10.0 # Demasiado expuesto/plano
+    sasa_norm = (sasa - sasa_min) / sasa_range
+    pocket_member = 1.0 if res_id in pocket_residues else 0.0
+    # Fórmula nueva: pocket_term = Wp * (0.7 * SASA_norm + 0.3 * pocket_member)
+    pocket_term = 30.0 * (0.7 * sasa_norm + 0.3 * pocket_member)
         
     # Fórmula Maestra
-    final_score = (cons_score * 3.0) + (cent_score * 50.0) + (rigidity * 1.5) + pocket_bonus
+    final_score = (cons_score * 3.0) + (cent_score * 50.0) + (rigidity * 1.5) + pocket_term
     
     data.append({
         "Residue": res.get_resname(),
@@ -109,6 +140,9 @@ for res in residues:
         "Ghost_Score": round(final_score, 3),
         "Conservation": round(cons_score, 2),
         "SASA": round(sasa, 1),
+        "SASA_Norm": round(sasa_norm, 3),
+        "Pocket_Member": int(pocket_member),
+        "Pocket_Term": round(pocket_term, 3),
         "Rigidity": round(rigidity, 1)
     })
 
