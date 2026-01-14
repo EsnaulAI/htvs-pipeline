@@ -11,7 +11,10 @@ if "snakemake" not in globals():
 
     config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(msa=config["evolution"]["msa_file"]),
+        input=SimpleNamespace(
+            msa=config["evolution"]["msa_file"],
+            pdb_msa_map=config["evolution"]["pdb_msa_map"],
+        ),
         output=SimpleNamespace(plot=config["analysis"]["dca_distribution"], report=config["analysis"]["dca_top_contacts"]),
         params=SimpleNamespace(
             pdb_id=config["structure"]["pdb_id"],
@@ -39,16 +42,10 @@ def load_config():
     config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
-from logging_utils import (
-    confirm_file,
-    ensure_parent_dir,
-    log_error,
-    log_info,
-    log_warn,
-    require_file,
-)
+from logging_utils import confirm_file, ensure_parent_dir, log_error, log_info, log_warn, require_file
 
 msa_file = snakemake.input.msa
+map_file = snakemake.input.pdb_msa_map
 output_plot = snakemake.output.plot 
 output_report = snakemake.output.report 
 
@@ -59,8 +56,25 @@ config = load_config()
 target_res_name = snakemake.params.target_res_name if hasattr(snakemake.params, "target_res_name") else config["structure"]["target_residue_name"]
 
 require_file(msa_file, "MSA de entrada")
+require_file(map_file, "mapa PDB->MSA")
 ensure_parent_dir(output_plot)
 ensure_parent_dir(output_report)
+
+with open(map_file, "r", encoding="utf-8") as handle:
+    map_payload = yaml.safe_load(handle)
+mapping = {int(k): v for k, v in map_payload.get("mapping", {}).items()}
+index_base = map_payload.get("index_base", 0)
+chain_id_used = map_payload.get("chain_id")
+if target_res_pdb not in mapping:
+    log_warn(
+        "⚠️ Advertencia: no hay correspondencia para el residuo objetivo "
+        f"{target_res_pdb} en la cadena {chain_id_used}. "
+        "Es posible que esté ausente por gaps en el MSA."
+    )
+    sys.exit(1)
+
+target_res_msa = mapping[target_res_pdb] - index_base
+target_res_msa_pos = target_res_msa + 1
 
 log_info("🧠 Iniciando PyDCA (Direct Coupling Analysis) - Campo Medio...")
 
@@ -115,16 +129,21 @@ try:
             f.write(f"{res1},{res2},{score}\n")
             log_info(f"Res {res1} <--> Res {res2} : Score {score:.4f}")
             
-            if abs(res1 - target_res_pdb) < 5 or abs(res2 - target_res_pdb) < 5:
+            if abs(res1 - target_res_msa_pos) < 5 or abs(res2 - target_res_msa_pos) < 5:
                 found_target = True
 
         if found_target:
-            print(f"\n✅ ¡BINGO! El entorno de {target_res_name} {target_res_pdb} aparece en los acoplamientos fuertes.")
+            print(
+                "\n✅ ¡BINGO! El entorno de "
+                f"{target_res_name} {target_res_pdb} "
+                f"(MSA {target_res_msa_pos}) aparece en los acoplamientos fuertes."
+            )
         else:
-            print(f"\nℹ️ {target_res_name} {target_res_pdb} no está en el Top 20 global.")
-            log_info(f"✅ ¡BINGO! El entorno de GLU {target_res_pdb} aparece en los acoplamientos fuertes.")
-        else:
-            log_info(f"ℹ️ GLU {target_res_pdb} no está en el Top 20 global.")
+            print(
+                "\nℹ️ "
+                f"{target_res_name} {target_res_pdb} "
+                f"(MSA {target_res_msa_pos}) no está en el Top 20 global."
+            )
 
     # 4. Plot de Contactos
     data = np.array([x[2] for x in fnapc])
