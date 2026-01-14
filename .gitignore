@@ -34,3 +34,5 @@ envs/
 
 # Excepciones (Opcional: si quieres subir resultados pequeños finales)
 !results/module3/final_ranking.csv
+!results/.gitkeep
+!envs/.gitkeep
