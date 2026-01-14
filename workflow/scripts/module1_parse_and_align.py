@@ -45,10 +45,15 @@ homologs_input = snakemake.input.homologs
 orig_fasta = snakemake.input.original_fasta
 msa_output = snakemake.output.fasta_msa
 threads = snakemake.threads
+config = load_config()
+mafft_log = Path("results/module1/mafft.log")
+min_msa_sequences = config["evolution"].get("min_msa_sequences", 5)
+min_msa_length = config["evolution"].get("min_msa_length", 50)
 
 require_file(homologs_input, "FASTA de homologos")
 require_file(orig_fasta, "FASTA original")
 ensure_parent_dir(msa_output)
+ensure_parent_dir(mafft_log)
 
 log_info("📖 Leyendo homologos y preparando alineamiento...")
 
@@ -59,9 +64,28 @@ if len(hits) < 5:
     log_warn("⚠️ ADVERTENCIA CRÍTICA: Muy pocas secuencias para análisis evolutivo.")
 
 log_info("🧬 Ejecutando MAFFT (Alineamiento Múltiple)...")
+cmd = ["mafft", "--auto", "--quiet", "--thread", str(threads), temp_fasta]
+with open(msa_output, "w") as msa_handle, open(mafft_log, "w") as log_handle:
+    subprocess.run(cmd, check=True, stdout=msa_handle, stderr=log_handle)
 cmd = f"mafft --auto --quiet --thread {threads} {homologs_input} > {msa_output}"
 subprocess.run(cmd, shell=True, check=True)
 
 print("✅ Alineamiento completado.")
 confirm_file(msa_output, "MSA generado")
 log_info("✅ Alineamiento completado.")
+
+alignment_records = list(SeqIO.parse(msa_output, "fasta"))
+if len(alignment_records) < min_msa_sequences:
+    log_error(
+        "❌ MSA insuficiente: "
+        f"{len(alignment_records)} secuencias (mínimo {min_msa_sequences})."
+    )
+    sys.exit(1)
+
+alignment_length = len(alignment_records[0].seq) if alignment_records else 0
+if alignment_length <= min_msa_length:
+    log_error(
+        "❌ MSA insuficiente: "
+        f"longitud {alignment_length} (debe ser > {min_msa_length})."
+    )
+    sys.exit(1)
