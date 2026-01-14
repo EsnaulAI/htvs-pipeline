@@ -146,7 +146,19 @@ rule prepare_receptor_phys:
     conda:
         "workflow/envs/openbabel.yaml"
     shell:
-        "obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4"
+        """
+        set -euo pipefail
+        mkdir -p logs
+        log_file="logs/prepare_receptor_phys.log"
+        if ! obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4; then
+            echo "[prepare_receptor_phys] ERROR: obabel failed for {input.pdb}" | tee -a "$log_file" >&2
+            exit 1
+        fi
+        if [ ! -s {output.pdbqt} ]; then
+            echo "[prepare_receptor_phys] ERROR: PDBQT output missing or empty: {output.pdbqt}" | tee -a "$log_file" >&2
+            exit 1
+        fi
+        """
 
 rule discover_best_candidate:
     conda:
