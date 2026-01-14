@@ -1,4 +1,5 @@
 name: htvs-openbabel
+name: openbabel
 channels:
   - conda-forge
   - bioconda

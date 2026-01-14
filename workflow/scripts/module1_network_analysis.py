@@ -12,6 +12,12 @@ import networkx as nx
 import numpy as np
 from Bio.PDB import PDBParser
 import sys
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_info,
+    require_file,
+)
 
 # Inputs
 pdb_file = snakemake.input.pdb
@@ -23,7 +29,10 @@ target_residue = int(snakemake.params.target_res)
 
 output_report = snakemake.output.report
 
-print(f"🕸️ Iniciando Análisis de Redes (Graph Theory) en cadena {chain_id}...")
+require_file(pdb_file, "PDB de entrada")
+ensure_parent_dir(output_report)
+
+log_info(f"🕸️ Iniciando Análisis de Redes (Graph Theory) en cadena {chain_id}...")
 
 parser = PDBParser(QUIET=True)
 structure = parser.get_structure("Target", pdb_file)
@@ -39,7 +48,7 @@ for r in residues:
     G.add_node(r.id[1], resname=r.get_resname())
 
 # Añadir aristas (Contactos < 8 Angstroms entre Carbonos Alpha)
-print("   Calculando contactos físicos...")
+log_info("Calculando contactos físicos...")
 for i, r1 in enumerate(residues):
     for j, r2 in enumerate(residues):
         if i >= j: continue 
@@ -51,10 +60,10 @@ for i, r1 in enumerate(residues):
         except KeyError:
             continue
 
-print(f"   Grafo construido: {G.number_of_nodes()} nodos, {G.number_of_edges()} conexiones.")
+log_info(f"Grafo construido: {G.number_of_nodes()} nodos, {G.number_of_edges()} conexiones.")
 
 # 2. Calcular Centralidad
-print("🧮 Calculando 'Betweenness Centrality'...")
+log_info("🧮 Calculando 'Betweenness Centrality'...")
 centrality = nx.betweenness_centrality(G)
 
 # 3. Analizar tu Blanco
@@ -69,10 +78,10 @@ with open(output_report, "w") as f:
     f.write(f"Centralidad: {my_score:.4f} (Max: {max_score:.4f})\n")
     f.write(f"Ranking: #{rank} de {len(residues)}\n")
     
-    print("\n" + "="*40)
-    print(f"📊 REPORTE DE RED PARA GLU {target_residue}")
-    print(f"Centralidad: {my_score:.4f} (Max en proteína: {max_score:.4f})")
-    print(f"Ranking: #{rank} de {len(residues)} residuos")
+    log_info("=" * 40)
+    log_info(f"📊 REPORTE DE RED PARA GLU {target_residue}")
+    log_info(f"Centralidad: {my_score:.4f} (Max en proteína: {max_score:.4f})")
+    log_info(f"Ranking: #{rank} de {len(residues)} residuos")
 
     if rank < len(residues) * 0.1:
         msg = "✅ CONCLUSIÓN: Es un HUB de comunicación (Top 10%). Confirmado ALOSTÉRICO."
@@ -80,4 +89,6 @@ with open(output_report, "w") as f:
         msg = "⚠️ CONCLUSIÓN: No es un hub central estructural."
     
     f.write(msg + "\n")
-    print(msg)
+    log_info(msg)
+
+confirm_file(output_report, "reporte de red")
