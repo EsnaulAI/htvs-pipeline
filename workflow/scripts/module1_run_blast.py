@@ -13,6 +13,13 @@ if "snakemake" not in globals():
 from Bio.Blast import NCBIWWW
 from Bio import SeqIO
 import sys
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_error,
+    log_info,
+    require_file,
+)
 
 # Inputs de Snakemake
 fasta_input = snakemake.input.fasta
@@ -22,9 +29,12 @@ n_hits = snakemake.params.n_hits
 # Default a 'nr' si no se especifica, para máxima potencia en PyDCA
 db_name = snakemake.params.get("db", "nr") 
 
-print(f"🚀 Iniciando BLAST Remoto (NCBI) contra '{db_name}' para {fasta_input}...")
-print(f"   🎯 Objetivo: {n_hits} secuencias (E-value: {e_val})")
-print("   ⏳ Esto puede tardar 10-20 minutos. No cierres la terminal...")
+require_file(fasta_input, "FASTA de entrada")
+ensure_parent_dir(xml_output)
+
+log_info(f"🚀 Iniciando BLAST Remoto (NCBI) contra '{db_name}' para {fasta_input}...")
+log_info(f"🎯 Objetivo: {n_hits} secuencias (E-value: {e_val})")
+log_info("⏳ Esto puede tardar 10-20 minutos. No cierres la terminal...")
 
 try:
     record = SeqIO.read(fasta_input, "fasta")
@@ -42,8 +52,9 @@ try:
         out_handle.write(result_handle.read())
 
     result_handle.close()
-    print(f"✅ Resultados BLAST guardados en {xml_output}")
+    confirm_file(xml_output, "XML de resultados BLAST")
+    log_info(f"✅ Resultados BLAST guardados en {xml_output}")
 
 except Exception as e:
-    print(f"❌ Error conectando a BLAST: {e}")
+    log_error(f"❌ Error conectando a BLAST: {e}")
     sys.exit(1)

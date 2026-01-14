@@ -17,6 +17,12 @@ from Bio.PDB import PDBParser, SASA
 import numpy as np
 import re
 import sys
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_info,
+    require_file,
+)
 
 # Inputs
 pdb_file = snakemake.input.pdb
@@ -41,7 +47,11 @@ def get_pocket_residues(file_path):
         pass
     return pocket_res
 
-print(f"🕵️ Explorando candidatos en cadena {chain_id}...")
+require_file(pdb_file, "PDB conservado")
+require_file(pocket_file, "archivo de pockets")
+ensure_parent_dir(output_csv)
+
+log_info(f"🕵️ Explorando candidatos en cadena {chain_id}...")
 
 # 1. Cargar Estructura
 parser = PDBParser(QUIET=True)
@@ -75,7 +85,7 @@ mobility_map = dict(zip(calphas.getResnums(), calcSqFlucts(anm)))
 # 5. INTEGRACIÓN (Ghost-Score v2.0)
 data = []
 
-print("   📊 Evaluando residuos...")
+log_info("📊 Evaluando residuos...")
 
 for res in residues:
     res_id = res.id[1]
@@ -115,7 +125,8 @@ for res in residues:
 # Ranking
 df = pd.DataFrame(data).sort_values(by="Ghost_Score", ascending=False)
 df.to_csv(output_csv, index=False)
+confirm_file(output_csv, "ranking de candidatos")
 
 winner = df.iloc[0]
-print(f"🏆 GANADOR CIENTÍFICO: {winner['Residue']}{winner['ID']}")
-print(f"   Score: {winner['Ghost_Score']} (SASA: {winner['SASA']})")
+log_info(f"🏆 GANADOR CIENTÍFICO: {winner['Residue']}{winner['ID']}")
+log_info(f"Score: {winner['Ghost_Score']} (SASA: {winner['SASA']})")
