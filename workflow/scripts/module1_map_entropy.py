@@ -5,11 +5,14 @@ if "snakemake" not in globals():
     from types import SimpleNamespace
     snakemake = SimpleNamespace(
         input=SimpleNamespace(pdb="", fasta="", xml="", original_fasta="", msa=""),
-        output=SimpleNamespace(pdb="", fasta="", xml="", fasta_msa="", pdb_conserved=""),
+        output=SimpleNamespace(
+            pdb="", fasta="", xml="", fasta_msa="", pdb_conserved="", pdb_msa_map=""
+        ),
         params=SimpleNamespace(pdb_id="7KGY", chain="B", n_hits=10, e_val=0.001),
         wildcards=SimpleNamespace()
     )
 # ----------------------------------------------------
+import json
 import math
 from Bio import AlignIO, pairwise2
 from Bio.PDB import PDBParser, PDBIO
@@ -29,7 +32,7 @@ def extract_chain_sequence(structure, chain_id=None):
 
 
 def map_pdb_to_msa(alignment, structure, chain_id=None, gap_char="-"):
-    """Mapea residuos del PDB (numeración PDB) a columnas del MSA."""
+    """Mapea residuos del PDB (numeración PDB) a columnas del MSA (0-based)."""
     target_msa_seq = str(alignment[0].seq)
     msa_non_gap_to_col = []
     for col_idx, aa in enumerate(target_msa_seq):
@@ -63,12 +66,19 @@ def map_pdb_to_msa(alignment, structure, chain_id=None, gap_char="-"):
             target_idx += 1
 
     return mapping, residues, chain_id_used
-from logging_utils import (
-    confirm_file,
-    ensure_parent_dir,
-    log_info,
-    require_file,
-)
+
+
+def export_pdb_to_msa_map(mapping, chain_id_used, output_path, msa_length):
+    payload = {
+        "chain_id": chain_id_used,
+        "index_base": 0,
+        "msa_length": msa_length,
+        "mapping": {str(k): v for k, v in mapping.items()},
+    }
+    with open(output_path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=True)
+
+from logging_utils import confirm_file, ensure_parent_dir, log_info, log_warn, require_file
 
 
 def calculate_shannon_entropy(alignment):
@@ -107,97 +117,62 @@ def calculate_shannon_entropy(alignment):
     return entropy_scores
 
 
-def main():
-    pdb_input = snakemake.input.pdb
-    msa_input = snakemake.input.msa
-    pdb_output = snakemake.output.pdb_conserved
-    chain_id = getattr(snakemake.params, "chain", None)
+pdb_input = snakemake.input.pdb
+msa_input = snakemake.input.msa
+pdb_output = snakemake.output.pdb_conserved
+map_output = getattr(snakemake.output, "pdb_msa_map", None)
+chain_id = getattr(snakemake.params, "chain", None)
 
-    print("🧮 Calculando conservación evolutiva...")
-    alignment = AlignIO.read(msa_input, "fasta")
-    scores = calculate_shannon_entropy(alignment)
-
-    # Mapear al PDB usando alineamiento global PDB <-> MSA
-    parser = PDBParser(QUIET=True)
-    structure = parser.get_structure("Target", pdb_input)
-    mapping, pdb_residues, chain_id_used = map_pdb_to_msa(
-        alignment,
-        structure,
-        chain_id=chain_id,
-    )
-
-    if not mapping:
-        print(
-            "⚠️ Advertencia: no se pudo generar un mapa PDB->MSA. "
-            "Revisa la cadena o la consistencia del MSA."
-        )
-
-    print("🎨 Inyectando puntuaciones en el factor B del PDB...")
-    unmapped = 0
-    for residue in pdb_residues:
-        resseq = residue.id[1]
-        if resseq not in mapping:
-            unmapped += 1
-            continue
-        score = scores[mapping[resseq]]
-        for atom in residue:
-            atom.set_bfactor(score)
-
-    if unmapped:
-        print(
-            "⚠️ Advertencia: "
-            f"{unmapped} residuos en la cadena {chain_id_used} "
-            "no tienen correspondencia en el MSA (posibles gaps)."
-        )
-
-    # Guardar PDB con datos inyectados
-    io = PDBIO()
-    io.set_structure(structure)
-    io.save(pdb_output)
-
-    print(f"✅ ¡Éxito! Archivo generado: {pdb_output}")
-    print("   -> Abre este archivo en PyMOL y colorea por B-factor para ver la conservación.")
-
-
-if __name__ == "__main__":
-    main()
 require_file(pdb_input, "PDB de entrada")
 require_file(msa_input, "MSA de entrada")
 ensure_parent_dir(pdb_output)
+if map_output:
+    ensure_parent_dir(map_output)
 
 log_info("🧮 Calculando conservación evolutiva...")
 alignment = AlignIO.read(msa_input, "fasta")
 scores = calculate_shannon_entropy(alignment)
 
-# Mapear al PDB
 parser = PDBParser(QUIET=True)
 structure = parser.get_structure("Target", pdb_input)
-# Asumimos que la primera secuencia del MSA es nuestra PDB (porque la pusimos primera)
-# Necesitamos mapear índice MSA -> Residuo PDB (saltando gaps en la seq 1)
+mapping, pdb_residues, chain_id_used = map_pdb_to_msa(
+    alignment,
+    structure,
+    chain_id=chain_id,
+)
 
-target_seq_in_msa = alignment[0].seq
-pdb_residues = list(structure.get_residues())
+if not mapping:
+    log_warn(
+        "⚠️ Advertencia: no se pudo generar un mapa PDB->MSA. "
+        "Revisa la cadena o la consistencia del MSA."
+    )
 
-msa_index = 0
-pdb_index = 0
+if map_output:
+    export_pdb_to_msa_map(
+        mapping,
+        chain_id_used,
+        map_output,
+        alignment.get_alignment_length(),
+    )
 
 log_info("🎨 Inyectando puntuaciones en el factor B del PDB...")
+unmapped = 0
+for residue in pdb_residues:
+    resseq = residue.id[1]
+    if resseq not in mapping:
+        unmapped += 1
+        continue
+    score = scores[mapping[resseq]]
+    for atom in residue:
+        atom.set_bfactor(score)
 
-for msa_char in target_seq_in_msa:
-    score = scores[msa_index]
-    
-    if msa_char != '-':
-        # Si no es un gap en nuestra secuencia, corresponde a un residuo del PDB
-        if pdb_index < len(pdb_residues):
-            residue = pdb_residues[pdb_index]
-            # Asignar score al B-factor de cada átomo del residuo
-            for atom in residue:
-                atom.set_bfactor(score)
-            pdb_index += 1
-            
-    msa_index += 1
+if unmapped:
+    log_warn(
+        "⚠️ Advertencia: "
+        f"{unmapped} residuos en la cadena {chain_id_used} "
+        "no tienen correspondencia en el MSA (posibles gaps)."
+    )
 
-# Guardar PDB con datos inyectados
 io = PDBIO()
 io.set_structure(structure)
 io.save(pdb_output)
