@@ -35,6 +35,7 @@ def load_config():
 from logging_utils import (
     confirm_file,
     ensure_parent_dir,
+    log_error,
     log_info,
     require_file,
 )
@@ -64,6 +65,22 @@ chain = structure[0][chain_id]
 G = nx.Graph()
 residues = list(chain.get_residues())
 residues = [r for r in residues if r.id[0] == " "] # Solo aminoácidos estándar
+residue_ids = [r.id[1] for r in residues]
+
+if not residue_ids:
+    log_error(f"❌ No se encontraron residuos estándar en la cadena {chain_id}.")
+    sys.exit(1)
+
+min_res = min(residue_ids)
+max_res = max(residue_ids)
+log_info(f"Rango real de residuos en cadena {chain_id}: {min_res} - {max_res}")
+
+if target_residue not in residue_ids:
+    log_error(
+        f"❌ Residuo objetivo {target_residue} no encontrado en cadena {chain_id}. "
+        f"Rango real: {min_res}-{max_res}."
+    )
+    sys.exit(1)
 
 # Añadir nodos
 for r in residues:
