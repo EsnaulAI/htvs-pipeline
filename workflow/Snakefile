@@ -1,5 +1,7 @@
 configfile: 'config/config.yaml'
 
+USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
+
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
     conda:
@@ -27,36 +29,40 @@ rule fetch_clean_pdb:
         'scripts/module1_prep_structure.py'
 
 # [cite_start]MEJORA: Aumentamos a 2000 hits y usamos base de datos 'nr' [cite: 4]
-rule run_blast:
-    conda:
-        "../environment.yaml"
-    input: 
-        fasta="results/module1/target.fasta"
-    output: 
-        xml="results/module1/blast_results.xml"
-    params:
-        n_hits=2000,       # Aumentado para potencia estadística en DCA
-        e_val=0.001,
-        db="nr"            # Base de datos masiva (Non-Redundant)
-    script: 
-        'scripts/module1_run_blast.py'
-
-rule run_mmseqs:
-    input:
-        fasta="results/module1/target.fasta"
-    output:
-        fasta_homologs="results/module1/homologs_unaligned.fasta"
-    threads: 4
-    conda:
-        "workflow/envs/mmseqs.yaml"
-    script:
-        'scripts/module1_run_mmseqs.py'
+if not USE_MMSEQS:
+    rule run_blast:
+        conda:
+            "workflow/envs/mmseqs.yaml"
+        input: 
+            fasta="results/module1/target.fasta"
+        output: 
+            xml="results/module1/blast_results.xml",
+            fasta_homologs=config["evolution"]["unaligned_homologs"],
+            method_log="results/module1/homolog_method.log"
+        params:
+            n_hits=2000,       # Aumentado para potencia estadística en DCA
+            e_val=0.001,
+            db="nr"            # Base de datos masiva (Non-Redundant)
+        script: 
+            'scripts/module1_run_blast.py'
+else:
+    rule run_mmseqs:
+        input:
+            fasta="results/module1/target.fasta"
+        output:
+            fasta_homologs=config["evolution"]["unaligned_homologs"],
+            method_log="results/module1/homolog_method.log"
+        threads: 4
+        conda:
+            "workflow/envs/mmseqs.yaml"
+        script:
+            'scripts/module1_run_mmseqs.py'
 
 rule parse_and_align:
     conda:
         "envs/mafft.yaml"
     input: 
-        xml="results/module1/blast_results.xml",
+        homologs=config["evolution"]["unaligned_homologs"],
         original_fasta="results/module1/target.fasta"
     output: 
         fasta_msa=config["evolution"]["msa_file"]
@@ -72,13 +78,17 @@ rule map_conservation:
     input:
         pdb=config["structure"]["clean_pdb"],
         msa=config["evolution"]["msa_file"]
-    output: pdb_conserved=config["evolution"]["conservation_pdb"]
+    output:
+        pdb_conserved=config["evolution"]["conservation_pdb"],
+        pdb_msa_map=config["evolution"]["pdb_msa_map"]
     script: 'scripts/module1_map_entropy.py'
 
 rule run_pydca:
     conda:
         "envs/pydca.yaml"
-    input: msa=config["evolution"]["msa_file"]
+    input:
+        msa=config["evolution"]["msa_file"],
+        pdb_msa_map=config["evolution"]["pdb_msa_map"]
     output:
         plot="results/module1/dca_distribution.png",
         report="results/module1/dca_top_contacts.csv"
@@ -88,7 +98,9 @@ rule run_pydca:
     script: 'scripts/module1_pydca.py'
 
 rule run_coevolution_mi:
-    input: msa=config["evolution"]["msa_file"]
+    input:
+        msa=config["evolution"]["msa_file"],
+        pdb_msa_map=config["evolution"]["pdb_msa_map"]
     output: plot="results/module1/coevolution_profile.png"
     params: target_res=config["structure"]["target_residue"]
     script: 'scripts/module1_coevolution_mi.py'
@@ -146,7 +158,19 @@ rule prepare_receptor_phys:
     conda:
         "workflow/envs/openbabel.yaml"
     shell:
-        "obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4"
+        """
+        set -euo pipefail
+        mkdir -p logs
+        log_file="logs/prepare_receptor_phys.log"
+        if ! obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4; then
+            echo "[prepare_receptor_phys] ERROR: obabel failed for {input.pdb}" | tee -a "$log_file" >&2
+            exit 1
+        fi
+        if [ ! -s {output.pdbqt} ]; then
+            echo "[prepare_receptor_phys] ERROR: PDBQT output missing or empty: {output.pdbqt}" | tee -a "$log_file" >&2
+            exit 1
+        fi
+        """
 
 rule discover_best_candidate:
     conda:
