@@ -1,11 +1,45 @@
 # Estructura del repositorio
 
+## Árbol real (profundidad 2)
+```
+.
+├── README.md
+├── config
+│   └── config.yaml
+├── data
+├── docs
+├── envs
+├── environment.yaml
+├── logs
+├── models
+├── notebooks
+├── results
+├── scripts
+└── workflow
+    ├── Snakefile
+    ├── envs
+    └── scripts
+```
+
+## Carpetas estándar
 - `docs/`: documentación técnica y descriptiva del proyecto.
-- `results/`: resultados finales del pipeline (tablas, reportes, figuras).
 - `data/`: datos de entrada y datasets de referencia.
-- `scripts/`: scripts auxiliares y utilitarios fuera del flujo principal.
+- `results/`: resultados finales del pipeline (tablas, reportes, figuras).
 - `workflow/`: definición del flujo de trabajo de Snakemake (Snakefile, envs, scripts específicos).
+- `scripts/`: scripts auxiliares y utilitarios fuera del flujo principal.
 - `envs/`: archivos de entorno y dependencias reutilizables.
-- `notebooks/`: cuadernos de análisis exploratorio.
-- `models/`: modelos entrenados o recursos derivados.
 - `logs/`: registros de ejecución y trazas.
+- `notebooks/`: cuadernos de análisis exploratorio.
+
+## Extras presentes en el repo
+- `config/`: configuración central del pipeline.
+- `models/`: modelos entrenados o recursos derivados.
+
+## Rutas críticas (referencias clave)
+- `config/config.yaml`: parámetros del proyecto y rutas de trabajo.
+- `workflow/Snakefile`: orquestación principal de Snakemake.
+- `workflow/scripts/`: scripts ejecutados por reglas del pipeline.
+- `workflow/envs/pydca.yaml`: entorno específico para PyDCA.
+- `environment.yaml`: entorno general de la ejecución.
+- `data/`: insumos y bases de datos locales.
+- `results/`: salida del pipeline (reportes, figuras y resultados intermedios/finales).
