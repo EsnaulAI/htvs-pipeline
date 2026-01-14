@@ -16,6 +16,12 @@ from rdkit.Chem import AllChem
 from concurrent.futures import ProcessPoolExecutor
 import sys
 import os
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_info,
+    require_file,
+)
 
 def process_ligand(line):
     parts = line.strip().split()
@@ -75,7 +81,10 @@ def main():
     threads = snakemake.threads
     output_flag = snakemake.output[0] # El archivo .flag
 
-    print(f"⚡ TURBO V2 (FIXED): Procesando ligandos con {threads} núcleos...")
+    require_file(input_smi, "SMILES de entrada")
+    ensure_parent_dir(output_flag)
+
+    log_info(f"⚡ TURBO V2 (FIXED): Procesando ligandos con {threads} núcleos...")
     os.makedirs(out_dir, exist_ok=True)
     
     with open(input_smi, 'r') as f:
@@ -109,7 +118,8 @@ def main():
     with open(output_flag, 'w') as f:
         f.write("Done")
 
-    print(f"✅ Procesamiento Terminado: {count} ligandos listos en {out_dir}")
+    confirm_file(output_flag, "flag de salida")
+    log_info(f"✅ Procesamiento Terminado: {count} ligandos listos en {out_dir}")
 
 if __name__ == "__main__":
     main()

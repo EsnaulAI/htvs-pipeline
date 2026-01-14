@@ -63,6 +63,12 @@ def map_pdb_to_msa(alignment, structure, chain_id=None, gap_char="-"):
             target_idx += 1
 
     return mapping, residues, chain_id_used
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_info,
+    require_file,
+)
 
 
 def calculate_shannon_entropy(alignment):
@@ -155,3 +161,47 @@ def main():
 
 if __name__ == "__main__":
     main()
+require_file(pdb_input, "PDB de entrada")
+require_file(msa_input, "MSA de entrada")
+ensure_parent_dir(pdb_output)
+
+log_info("🧮 Calculando conservación evolutiva...")
+alignment = AlignIO.read(msa_input, "fasta")
+scores = calculate_shannon_entropy(alignment)
+
+# Mapear al PDB
+parser = PDBParser(QUIET=True)
+structure = parser.get_structure("Target", pdb_input)
+# Asumimos que la primera secuencia del MSA es nuestra PDB (porque la pusimos primera)
+# Necesitamos mapear índice MSA -> Residuo PDB (saltando gaps en la seq 1)
+
+target_seq_in_msa = alignment[0].seq
+pdb_residues = list(structure.get_residues())
+
+msa_index = 0
+pdb_index = 0
+
+log_info("🎨 Inyectando puntuaciones en el factor B del PDB...")
+
+for msa_char in target_seq_in_msa:
+    score = scores[msa_index]
+    
+    if msa_char != '-':
+        # Si no es un gap en nuestra secuencia, corresponde a un residuo del PDB
+        if pdb_index < len(pdb_residues):
+            residue = pdb_residues[pdb_index]
+            # Asignar score al B-factor de cada átomo del residuo
+            for atom in residue:
+                atom.set_bfactor(score)
+            pdb_index += 1
+            
+    msa_index += 1
+
+# Guardar PDB con datos inyectados
+io = PDBIO()
+io.set_structure(structure)
+io.save(pdb_output)
+
+confirm_file(pdb_output, "PDB con conservación")
+log_info(f"✅ ¡Éxito! Archivo generado: {pdb_output}")
+log_info("-> Abre este archivo en PyMOL y colorea por B-factor para ver la conservación.")

@@ -1,0 +1,6 @@
+name: openbabel
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - openbabel>=3.1.1
