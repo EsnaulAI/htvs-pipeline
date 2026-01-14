@@ -6,7 +6,11 @@ import sys
 
 # Inputs
 msa_file = "results/module1/alignment.fasta"
-target_res_index = 513 - 1 # Ajuste de índice (PDB 513 -> Array 512 si empieza en 1, pero depende del mapeo. Usaremos aproximado)
+try:
+    target_residue = int(snakemake.params.target_res)
+except NameError:
+    target_residue = 513
+target_res_index = target_residue - 1 # Ajuste de índice (PDB -> Array si empieza en 1, pero depende del mapeo. Usaremos aproximado)
 # NOTA: En un pipeline real estricto, debemos alinear índice PDB <-> índice MSA. 
 # Aquí asumiremos que el MSA mantiene la numeración aproximada tras recortar gaps principales.
 

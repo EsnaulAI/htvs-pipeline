@@ -4,6 +4,7 @@ configfile: 'config/config.yaml'
 rule all:
     input:
         "results/module1/candidate_ranking.csv",
+        "results/module1/coevolution_profile.png",
         "results/module1/config_updated.flag",
         "results/module1/target_prepared.pdbqt",
         "results/module1/view_scene.cxc",
@@ -58,6 +59,12 @@ rule run_pydca:
         report="results/module1/dca_top_contacts.csv"
     params: target_res=config["structure"]["target_residue"]
     script: 'scripts/module1_pydca.py'
+
+rule run_coevolution_mi:
+    input: msa=config["evolution"]["msa_file"]
+    output: plot="results/module1/coevolution_profile.png"
+    params: target_res=config["structure"]["target_residue"]
+    script: 'scripts/module1_coevolution_mi.py'
 
 rule run_network_analysis:
     input: pdb=config["evolution"]["conservation_pdb"]
