@@ -10,6 +10,7 @@ structure:
 evolution:
   n_homologs: 2000
   e_value: 0.001
+  use_mmseqs: false
   msa_file: results/module1/alignment.fasta
   conservation_pdb: results/module1/target_conserved.pdb
   unaligned_homologs: results/module1/unaligned_homologs.fasta
