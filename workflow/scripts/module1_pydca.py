@@ -1,10 +1,26 @@
 # --- MOCK PARA DESARROLLO (Pylance no se quejará) ---
 if "snakemake" not in globals():
+    from pathlib import Path
     from types import SimpleNamespace
+    import yaml
+
+    def load_config():
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+
+    config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(msa="results/module1/alignment.fasta"),
-        output=SimpleNamespace(plot="results/module1/dca_distribution.png", report="results/module1/dca_top_contacts.csv"),
-        params=SimpleNamespace(pdb_id="7KGY", chain="B", n_hits=10, e_val=0.001, target_res=513),
+        input=SimpleNamespace(msa=config["evolution"]["msa_file"]),
+        output=SimpleNamespace(plot=config["analysis"]["dca_distribution"], report=config["analysis"]["dca_top_contacts"]),
+        params=SimpleNamespace(
+            pdb_id=config["structure"]["pdb_id"],
+            chain=config["structure"]["chain_id"],
+            n_hits=config["evolution"]["n_homologs"],
+            e_val=config["evolution"]["e_value"],
+            target_res=config["structure"]["target_residue"],
+            target_res_name=config["structure"]["target_residue_name"],
+        ),
         wildcards=SimpleNamespace(),
         threads=4
     )
@@ -16,6 +32,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import os
+from pathlib import Path
+import yaml
+
+def load_config():
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
 from logging_utils import (
     confirm_file,
     ensure_parent_dir,
@@ -32,6 +55,8 @@ output_report = snakemake.output.report
 # --- CAMBIO CRÍTICO: Recibir variable desde Config ---
 target_res_pdb = int(snakemake.params.target_res)
 # ---------------------------------------------------
+config = load_config()
+target_res_name = snakemake.params.target_res_name if hasattr(snakemake.params, "target_res_name") else config["structure"]["target_residue_name"]
 
 require_file(msa_file, "MSA de entrada")
 ensure_parent_dir(output_plot)
@@ -94,6 +119,9 @@ try:
                 found_target = True
 
         if found_target:
+            print(f"\n✅ ¡BINGO! El entorno de {target_res_name} {target_res_pdb} aparece en los acoplamientos fuertes.")
+        else:
+            print(f"\nℹ️ {target_res_name} {target_res_pdb} no está en el Top 20 global.")
             log_info(f"✅ ¡BINGO! El entorno de GLU {target_res_pdb} aparece en los acoplamientos fuertes.")
         else:
             log_info(f"ℹ️ GLU {target_res_pdb} no está en el Top 20 global.")
@@ -111,5 +139,6 @@ try:
     log_info(f"-> Gráfica guardada: {output_plot}")
 
 except Exception as e:
+    print(f"❌ Error crítico en PyDCA: {e}")
     log_error(f"❌ Error crítico en PyDCA: {e}")
     sys.exit(1)

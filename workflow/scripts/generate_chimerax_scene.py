@@ -3,25 +3,49 @@
 # --- MOCK PARA DESARROLLO (Pylance no se quejará) ---
 if "snakemake" not in globals():
     # Esto simula la variable snakemake para que el editor no marque error
+    from pathlib import Path
     from types import SimpleNamespace
+    import yaml
+
+    def load_config():
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+
+    config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(pdb="results/module1/target_conserved.pdb"),
-        output=SimpleNamespace(cxc="results/module1/view_scene.cxc"),
-        params=SimpleNamespace(pdb_id="6OCR", chain="B", target_res=513),
+        input=SimpleNamespace(pdb=config["evolution"]["conservation_pdb"]),
+        output=SimpleNamespace(cxc=config["visualization"]["view_scene"]),
+        params=SimpleNamespace(
+            pdb_id=config["structure"]["pdb_id"],
+            chain=config["structure"]["chain_id"],
+            target_res=config["structure"]["target_residue"],
+            target_res_name=config["structure"]["target_residue_name"],
+        ),
         wildcards=SimpleNamespace()
     )
 # ----------------------------------------------------
+
+from pathlib import Path
+import yaml
+
+def load_config():
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
 
 # Inputs desde Snakemake
 pdb_file = snakemake.input.pdb
 target_res = int(snakemake.params.target_res)
 chain_id = snakemake.params.chain
 output_cxc = snakemake.output.cxc
+config = load_config()
+target_res_name = snakemake.params.target_res_name if hasattr(snakemake.params, "target_res_name") else config["structure"]["target_residue_name"]
 
-print(f"🎨 Generando escena de ChimeraX para el residuo {target_res}...")
+print(f"🎨 Generando escena de ChimeraX para el residuo {target_res_name} {target_res}...")
 
 # Tamaño de la caja de docking (Debe coincidir con lo que tienes en config.yaml)
-BOX_SIZE = 22 
+BOX_SIZE = config["docking"]["size_x"]
 
 # Contenido del script .cxc
 # ChimeraX usa comandos distintos a PyMOL.
@@ -52,7 +76,7 @@ style sel sphere
 color sel gold
 
 # Etiqueta flotante
-label sel text "Target {target_res}" height 1.5 color black yoffset 2
+label sel text "Target {target_res_name} {target_res}" height 1.5 color black yoffset 2
 
 # 5. DIBUJAR GRIDBOX (Visualización de la Caja de Docking)
 # Crea un cubo de malla amarilla centrado exactamente en el residuo seleccionado
@@ -67,4 +91,4 @@ with open(output_cxc, "w") as f:
     f.write(cxc_content)
 
 print(f"✅ Script guardado en: {output_cxc}")
-print("   -> Para ver: Abre ChimeraX y ejecuta 'open results/module1/view_scene.cxc'")
+print(f"   -> Para ver: Abre ChimeraX y ejecuta 'open {output_cxc}'")

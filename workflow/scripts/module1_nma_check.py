@@ -1,19 +1,34 @@
 # --- MOCK PARA DESARROLLO ---
 if "snakemake" not in globals():
+    from pathlib import Path
     from types import SimpleNamespace
+    import yaml
+
+    def load_config():
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+
+    config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(pdb="results/module1/target_conserved.pdb"),
-        output=SimpleNamespace(plot="results/module1/nma_mobility_profile.png"),
-        params=SimpleNamespace(chain="B", target_res=513)
+        input=SimpleNamespace(pdb=config["evolution"]["conservation_pdb"]),
+        output=SimpleNamespace(plot=config["analysis"]["nma_profile"]),
+        params=SimpleNamespace(
+            chain=config["structure"]["chain_id"],
+            target_res=config["structure"]["target_residue"],
+            target_res_name=config["structure"]["target_residue_name"],
+        )
     )
 # ----------------------------
 
+from pathlib import Path
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
 # Importar explícitamente las funciones de ProDy
 from prody import parsePDB, ANM, calcSqFlucts, confProDy
+import yaml
 from logging_utils import (
     confirm_file,
     ensure_parent_dir,
@@ -26,6 +41,13 @@ from logging_utils import (
 # Configuración silenciosa
 confProDy(verbosity='none')
 
+def load_config():
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
+
+def run_nma_analysis(pdb_file, chain_id, target_res_num, target_res_name, output_img):
+    print(f"🌊 Iniciando Análisis de Modos Normales (ANM) para {pdb_file}...")
 def run_nma_analysis(pdb_file, chain_id, target_res_num, output_img):
     log_info(f"🌊 Iniciando Análisis de Modos Normales (ANM) para {pdb_file}...")
     
@@ -50,6 +72,8 @@ def run_nma_analysis(pdb_file, chain_id, target_res_num, output_img):
     try:
         target_idx = list(res_nums).index(target_res_num)
         target_fluct = sq_flucts[target_idx]
+        print(f"\n🔍 ANÁLISIS DE MOVILIDAD PARA {target_res_name} {target_res_num}:")
+        print(f"   Fluctuación Cuadrática: {target_fluct:.4f} Å²")
         log_info(f"🔍 ANÁLISIS DE MOVILIDAD PARA GLU {target_res_num}:")
         log_info(f"Fluctuación Cuadrática: {target_fluct:.4f} Å²")
         
@@ -67,7 +91,7 @@ def run_nma_analysis(pdb_file, chain_id, target_res_num, output_img):
     plt.plot(res_nums, sq_flucts, label='Movilidad Teórica (ANM)', color='black', linewidth=1)
     
     # Marcar nuestro target
-    plt.axvline(x=target_res_num, color='red', linestyle='--', label=f'GLU {target_res_num}')
+    plt.axvline(x=target_res_num, color='red', linestyle='--', label=f'{target_res_name} {target_res_num}')
     
     plt.title('Perfil de Flexibilidad de AdeB (Análisis de Modos Normales)')
     plt.xlabel('Número de Residuo')
@@ -88,9 +112,11 @@ if __name__ == "__main__":
     # --- CAMBIO CRÍTICO: Recibir variable desde Config ---
     res_in = int(snakemake.params.target_res)
     # ---------------------------------------------------
-    
+    config = load_config()
+    target_res_name = snakemake.params.target_res_name if hasattr(snakemake.params, "target_res_name") else config["structure"]["target_residue_name"]
     out_plot = snakemake.output.plot
     
+    run_nma_analysis(pdb_in, chain_in, res_in, target_res_name, out_plot)
     require_file(pdb_in, "PDB de entrada")
     ensure_parent_dir(out_plot)
 

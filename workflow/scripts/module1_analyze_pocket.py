@@ -1,10 +1,25 @@
 # --- MOCK PARA DESARROLLO (Pylance no se quejará) ---
 if "snakemake" not in globals():
+    from pathlib import Path
     from types import SimpleNamespace
+    import yaml
+
+    def load_config():
+        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+        with open(config_path, "r") as f:
+            return yaml.safe_load(f)
+
+    config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(msa="results/module1/alignment.fasta"),
-        output=SimpleNamespace(plot="results/module1/dca_distribution.png", report="results/module1/dca_top_contacts.csv"),
-        params=SimpleNamespace(pdb_id="7KGY", chain="B", n_hits=10, e_val=0.001, target_res=513),
+        input=SimpleNamespace(msa=config["evolution"]["msa_file"]),
+        output=SimpleNamespace(plot=config["analysis"]["dca_distribution"], report=config["analysis"]["dca_top_contacts"]),
+        params=SimpleNamespace(
+            pdb_id=config["structure"]["pdb_id"],
+            chain=config["structure"]["chain_id"],
+            n_hits=config["evolution"]["n_homologs"],
+            e_val=config["evolution"]["e_value"],
+            target_res=config["structure"]["target_residue"],
+        ),
         wildcards=SimpleNamespace(),
         threads=4
     )

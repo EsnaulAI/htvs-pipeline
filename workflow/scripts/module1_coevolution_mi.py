@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 from collections import Counter
 from pathlib import Path
@@ -24,7 +25,18 @@ target_residue = config["structure"]["target_residue"]
 
 print("🧬 Iniciando Análisis de Co-evolución (Mutual Information)...")
 from collections import Counter
+from Bio import AlignIO
+import matplotlib.pyplot as plt
+import numpy as np
 import sys
+import yaml
+
+def load_config():
+    config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+    with open(config_path, "r") as f:
+        return yaml.safe_load(f)
+
+config = load_config()
 from logging_utils import (
     confirm_file,
     ensure_parent_dir,
@@ -34,6 +46,10 @@ from logging_utils import (
 )
 
 # Inputs
+msa_file = config["evolution"]["msa_file"]
+target_res_index = config["structure"]["target_residue"] - 1
+target_res_name = config["structure"]["target_residue_name"]
+output_plot = config["analysis"]["coevolution_profile"]
 msa_file = "results/module1/alignment.fasta"
 try:
     target_residue = int(snakemake.params.target_res)
@@ -131,6 +147,9 @@ for j in range(aln_len):
 top_indices = np.argsort(mi_scores)[-5:][::-1] # Top 5
 top_scores = [mi_scores[i] for i in top_indices]
 
+print("\n" + "="*40)
+print(f"🔗 REPORTE DE CO-EVOLUCIÓN (Socios de {target_res_name} {target_res_index + 1})")
+print("="*40)
 print("\n" + "=" * 40)
 print(f"🔗 REPORTE DE CO-EVOLUCIÓN (Socios de residuo {target_residue})")
 print("=" * 40)
@@ -159,5 +178,6 @@ plt.ylabel("Información Mutua Normalizada")
 plt.savefig("results/module1/coevolution_profile.png")
 print("   -> Gráfica guardada: results/module1/coevolution_profile.png")
 plt.savefig(output_plot)
+print(f"   -> Gráfica guardada: {output_plot}")
 confirm_file(output_plot, "gráfica co-evolución")
 log_info(f"-> Gráfica guardada: {output_plot}")
