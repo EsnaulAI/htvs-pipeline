@@ -102,7 +102,8 @@ rule run_coevolution_mi:
         msa=config["evolution"]["msa_file"],
         pdb_msa_map=config["evolution"]["pdb_msa_map"]
     output: plot="results/module1/coevolution_profile.png"
-    params: target_res=config["structure"]["target_residue"]
+    params:
+        target_res=config["structure"]["target_residue"]
     script: 'scripts/module1_coevolution_mi.py'
 
 rule run_network_analysis:
