@@ -12,10 +12,14 @@ evolution:
   e_value: 0.001
   use_mmseqs: false
   msa_file: results/module1/alignment.fasta
+  msa_qc_report: results/module1/msa_qc_report.csv
   conservation_pdb: results/module1/target_conserved.pdb
+  pdb_msa_map: results/module1/pdb_to_msa_map.json
   unaligned_homologs: results/module1/unaligned_homologs.fasta
   mmseqs_db_dir: data/databases/uniref50
   mmseqs_tmp_dir: results/module1/tmp_mmseqs
+  min_msa_sequences: 5
+  min_msa_length: 50
 chemistry:
   zinc_url: http://files.docking.org/2d/BA/BAAB.smi
   raw_library: data/raw/zinc_library.smi
