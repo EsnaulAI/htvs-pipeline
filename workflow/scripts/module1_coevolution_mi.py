@@ -55,6 +55,25 @@ def calc_mi(col_i, col_j):
     return mi
 
 
+if "snakemake" not in globals():
+    from types import SimpleNamespace
+
+    config = load_config()
+    snakemake = SimpleNamespace(
+        input=SimpleNamespace(
+            msa=config["evolution"]["msa_file"],
+            pdb_msa_map=config["evolution"]["pdb_msa_map"],
+        ),
+        output=SimpleNamespace(plot=config["analysis"]["coevolution_profile"]),
+        params=SimpleNamespace(target_res=config["structure"]["target_residue"]),
+    )
+else:
+    config = load_config()
+
+msa_file = snakemake.input.msa
+output_plot = snakemake.output.plot
+map_file = snakemake.input.pdb_msa_map
+target_residue = int(snakemake.params.target_res)
 if "snakemake" in globals():
     msa_file = snakemake.input.msa
     output_plot = snakemake.output.plot
