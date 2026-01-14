@@ -1,3 +1,4 @@
+name: htvs-fpocket
 name: fpocket
 channels:
   - conda-forge
