@@ -322,6 +322,7 @@ rule build_consensus_final:
         size_x=config["docking"]["size_x"],
         size_y=config["docking"]["size_y"],
         size_z=config["docking"]["size_z"]
+    script: "scripts/module3_build_consensus.py"
     # Nota: esta regla usa solo script para evitar conflictos con shell/run.
     script: "scripts/module3_build_consensus.py"
 
