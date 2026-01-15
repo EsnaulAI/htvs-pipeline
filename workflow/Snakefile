@@ -11,6 +11,7 @@ rule all:
         "results/module1/msa_qc_report.csv",
         "results/module1/target_prepared.pdbqt",
         "results/module1/view_scene.cxc",
+        "results/module2/qc_report.csv",
         "results/module2/preparation_done.flag"
 
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
@@ -237,11 +238,22 @@ rule filter_ligands:
         amine=config["chemistry"]["filters"]["must_have_amine"]
     script: 'scripts/module2_filter_entry.py'
 
+# 2b. Control de Calidad de Propiedades
+rule qc_properties:
+    conda:
+        "envs/rdkit.yaml"
+    input: smi=config["chemistry"]["filtered_library"]
+    output:
+        report="results/module2/qc_report.csv"
+    script: 'scripts/module2_qc_properties.py'
+
 # 3. Preparación 3D Paralela
 rule prepare_ligands_3d:
     conda:
         "envs/rdkit.yaml"
-    input: smi=config["chemistry"]["filtered_library"]
+    input:
+        smi=config["chemistry"]["filtered_library"],
+        qc_report="results/module2/qc_report.csv"
     output: touch("results/module2/preparation_done.flag")
     params: out_dir=config["chemistry"]["prepared_dir"]
     threads: 4
