@@ -1,7 +1,8 @@
-name: htvs-openbabel
 name: openbabel
 channels:
   - conda-forge
   - bioconda
 dependencies:
+  - python=3.10.*
+  - snakemake=7.32.4
   - openbabel>=3.1.1
