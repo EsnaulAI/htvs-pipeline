@@ -2,6 +2,9 @@ from pathlib import Path
 import sys
 from collections import Counter
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
@@ -23,19 +26,6 @@ def load_pdb_msa_map(map_path):
     return mapping, data.get("chain_id"), data.get("index_base", 0)
 
 
-# Inputs
-msa_file = config["evolution"]["msa_file"]
-target_res_name = config["structure"]["target_residue_name"]
-output_plot = config["analysis"]["coevolution_profile"]
-msa_file = "results/module1/alignment.fasta"
-try:
-    target_residue = int(snakemake.params.target_res)
-except NameError:
-    target_residue = config["structure"]["target_residue"]
-target_res_index = target_residue - 1  # Ajuste de índice (PDB -> Array si empieza en 1, pero depende del mapeo. Usaremos aproximado)
-# NOTA: En un pipeline real estricto, debemos alinear índice PDB <-> índice MSA.
-# Aquí asumiremos que el MSA mantiene la numeración aproximada tras recortar gaps principales.
-output_plot = "results/module1/coevolution_profile.png"
 def calc_entropy(col_data):
     counts = np.bincount(col_data, minlength=21)
     probs = counts[counts > 0] / len(col_data)
@@ -74,17 +64,6 @@ msa_file = snakemake.input.msa
 output_plot = snakemake.output.plot
 map_file = snakemake.input.pdb_msa_map
 target_residue = int(snakemake.params.target_res)
-if "snakemake" in globals():
-    msa_file = snakemake.input.msa
-    output_plot = snakemake.output.plot
-    map_file = snakemake.input.pdb_msa_map
-    target_residue = int(snakemake.params.target_res)
-else:
-    config = load_config()
-    msa_file = config["evolution"]["msa_file"]
-    output_plot = config["analysis"]["coevolution_profile"]
-    map_file = config["evolution"]["pdb_msa_map"]
-    target_residue = config["structure"]["target_residue"]
 
 require_file(msa_file, "MSA de entrada")
 require_file(map_file, "mapa PDB->MSA")
