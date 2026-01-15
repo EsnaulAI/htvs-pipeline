@@ -56,10 +56,6 @@ if not USE_MMSEQS:
             n_hits=config["evolution"]["n_homologs"],
             e_val=config["evolution"]["e_value"],
             db=config["evolution"].get("blast_db", "nr")
-        script: 'scripts/module1_run_blast.py'
-            n_hits=2000,
-            e_val=0.001,
-            db="nr"
         script: 'workflow/scripts/module1_run_blast.py'
 else:
     rule run_mmseqs:
