@@ -348,7 +348,6 @@ rule select_top_candidates:
 rule run_gnina_rescore:
     conda:
         "envs/gnina.yaml"
-rule run_vina_top:
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
@@ -363,11 +362,11 @@ rule build_consensus_final:
     conda:
         "../environment.yaml"
     input:
-        gnina_scores="results/module3/gnina_scores.csv"
+        gnina_scores="results/module3/gnina_scores.csv",
+        receptor="results/module1/target_prepared.pdbqt",
+        top_candidates="results/module3/top_candidates.csv"
     output:
-        consensus="results/module3/consensus_final.csv"
-    script:
-        "scripts/module3_build_consensus.py"
+        consensus="results/module3/consensus_final.csv",
         vina_dir=directory("results/module3/vina"),
         vina_logs=directory("results/module3/vina_logs")
     params:
