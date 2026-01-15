@@ -304,6 +304,7 @@ rule run_gnina_rescore:
 # --- REGLA FINAL DE REPORTE ---
 rule build_consensus_final:
     conda: "../environment.yaml"
+    # Usa solo una directiva de ejecución (script) para evitar errores de Snakemake.
     conda:
         "../environment.yaml"
     input:
