@@ -20,6 +20,7 @@ rule all:
         "results/module3/top_candidates.csv",
         "results/module3/top_candidates.smi",
         expand("results/module3/logs/{ligand}.log", ligand=LIGANDS_PDBQT),
+        "results/module3/docking_scores.csv",
         directory("results/module3/ligands_pdbqt")
 
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
@@ -340,6 +341,17 @@ rule select_top_candidates:
         top_percent=config["docking"].get("top_candidates_percent", 5)
     script: "scripts/module3_select_top_candidates.py"
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
+
+rule parse_smina_results:
+    input:
+        logs=expand("results/module3/logs/{ligand}.log", ligand=LIGANDS_PDBQT),
+        poses=expand("results/module3/docking/{ligand}_out.pdbqt", ligand=LIGANDS_PDBQT)
+    output:
+        scores="results/module3/docking_scores.csv"
+    params:
+        pose_dir="results/module3/docking"
+    script:
+        "scripts/module3_parse_smina_results.py"
 
 rule export_ligands_pdbqt_module3:
     conda:

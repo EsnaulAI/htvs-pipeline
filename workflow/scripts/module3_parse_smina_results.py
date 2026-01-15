@@ -11,9 +11,9 @@ if "snakemake" not in globals():
 
     config = load_config()
     snakemake = SimpleNamespace(
-        input=SimpleNamespace(logs_dir="logs"),
+        input=SimpleNamespace(logs_dir="results/module3/logs"),
         output=SimpleNamespace(scores="results/module3/docking_scores.csv"),
-        params=SimpleNamespace(),
+        params=SimpleNamespace(pose_dir="results/module3/docking"),
         wildcards=SimpleNamespace(),
     )
 
@@ -76,12 +76,16 @@ def parse_best_affinity(log_path):
 
 def main():
     output_csv = getattr(snakemake.output, "scores", None) or snakemake.output[0]
-    input_source = getattr(snakemake.input, "logs_dir", None)
-    if input_source is None:
-        input_items = list(snakemake.input)
+    logs_input = getattr(snakemake.input, "logs", None)
+    logs_dir = getattr(snakemake.input, "logs_dir", None)
+    if logs_input is not None:
+        input_items = list(logs_input)
+    elif logs_dir is not None:
+        input_items = [logs_dir]
     else:
-        input_items = [input_source]
+        input_items = list(snakemake.input)
     log_paths = collect_log_files(input_items)
+    pose_dir = getattr(snakemake.params, "pose_dir", "results/module3/docking")
 
     if not log_paths:
         log_warn("⚠️ No se encontraron logs de Smina para analizar.")
@@ -93,16 +97,27 @@ def main():
     for log_path in log_paths:
         affinity = parse_best_affinity(log_path)
         ligand_id = os.path.splitext(os.path.basename(log_path))[0]
+        pose_path = os.path.join(pose_dir, f"{ligand_id}_out.pdbqt")
         if affinity is None:
             log_warn(f"⚠️ Sin afinidad detectada en: {log_path}")
             continue
-        records.append({"ligand_id": ligand_id, "affinity": affinity})
+        if not os.path.isfile(pose_path):
+            log_warn(f"⚠️ No se encontró pose para {ligand_id}: {pose_path}")
+        records.append(
+            {
+                "ligand_id": ligand_id,
+                "score": affinity,
+                "log_path": log_path,
+                "pose_path": pose_path,
+            }
+        )
 
     df = pd.DataFrame(records)
     if not df.empty:
-        df = df.sort_values("affinity", ascending=True)
+        df = df.sort_values("score", ascending=True)
+        df = df[["ligand_id", "score", "log_path", "pose_path"]]
     else:
-        df = pd.DataFrame(columns=["ligand_id", "affinity"])
+        df = pd.DataFrame(columns=["ligand_id", "score", "log_path", "pose_path"])
 
     df.to_csv(output_csv, index=False)
     confirm_file(output_csv, "scores de docking")
