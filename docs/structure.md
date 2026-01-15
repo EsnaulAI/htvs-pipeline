@@ -43,3 +43,7 @@
 - `environment.yaml`: entorno general de la ejecución.
 - `data/`: insumos y bases de datos locales.
 - `results/`: salida del pipeline (reportes, figuras y resultados intermedios/finales).
+
+## Decisión sobre fuente química
+- El pipeline descarga la librería base desde ChEMBL usando `workflow/scripts/fetch_chembl_drugs.py`.
+- Se eliminó `chemistry.zinc_url` de la configuración porque no se utiliza en el flujo actual; la ruta `chemistry.raw_library` permanece como destino de la librería generada desde ChEMBL.

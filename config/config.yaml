@@ -22,7 +22,6 @@ evolution:
   min_msa_sequences: 5
   min_msa_length: 50
 chemistry:
-  zinc_url: http://files.docking.org/2d/BA/BAAB.smi
   raw_library: data/raw/zinc_library.smi
   filtered_library: results/module2/library_filtered.smi
   prepared_dir: results/module2/ligands_3d

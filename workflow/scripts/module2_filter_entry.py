@@ -43,6 +43,9 @@ if "snakemake" not in globals():
             n_hits=config["evolution"]["n_homologs"],
             e_val=config["evolution"]["e_value"],
             ligand_id_prefix=config["chemistry"]["ligand_id_prefix"],
+            mw=600,
+            logp=5.0,
+            amine=True,
         ),
         wildcards=SimpleNamespace(),
     )
@@ -58,17 +61,22 @@ def load_config():
 PRIMARY_AMINE = Chem.MolFromSmarts("[NX3;H2;!$(NC=O)]")
 
 
-def passes_entry_rules(mol):
+def passes_entry_rules(mol, mw_max, logp_max, must_have_amine):
     if mol is None:
         return False, "Invalid Molecule"
 
     # 1. Peso Molecular (< 600 Da)
     mw = Descriptors.MolWt(mol)
-    if mw > 600:
+    if mw > mw_max:
         return False, f"MW High ({mw:.1f})"
 
-    # 2. Amina Primaria (Regla clave para Gram-negativas)
-    if not mol.HasSubstructMatch(PRIMARY_AMINE):
+    # 2. LogP
+    logp = Descriptors.MolLogP(mol)
+    if logp > logp_max:
+        return False, f"LogP High ({logp:.2f})"
+
+    # 3. Amina Primaria (Regla clave para Gram-negativas)
+    if must_have_amine and not mol.HasSubstructMatch(PRIMARY_AMINE):
         return False, "No Primary Amine"
 
     return True, "Pass"
@@ -79,6 +87,9 @@ def main():
     output_smi = snakemake.output[0]
     output_csv = snakemake.output[1]
     output_dedup = snakemake.output[2]
+    mw_max = snakemake.params.mw
+    logp_max = snakemake.params.logp
+    must_have_amine = snakemake.params.amine
 
     require_file(input_file, "SMILES de entrada")
     ensure_parent_dir(output_smi)
@@ -107,7 +118,7 @@ def main():
                 mol = Chem.MolFromSmiles(smiles)
                 total_count += 1
 
-                is_valid, reason = passes_entry_rules(mol)
+                is_valid, reason = passes_entry_rules(mol, mw_max, logp_max, must_have_amine)
                 inchikey = Chem.MolToInchiKey(mol) if mol is not None else None
 
                 report_data.append(
