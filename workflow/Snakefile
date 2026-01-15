@@ -282,6 +282,18 @@ rule parse_smina_results:
     output: scores="results/module3/docking_scores.csv"
     script: "workflow/scripts/module3_parse_smina_results.py"
 
+rule contact_filter_hits:
+    conda: "../environment.yaml"
+    input:
+        scores="results/module3/docking_scores.csv",
+        receptor=config["evolution"]["conservation_pdb"]
+    output:
+        final_hits="results/module3/final_hits.csv"
+    params:
+        chain=config["structure"]["chain_id"],
+        target_res=config["structure"]["target_residue"]
+    script: "workflow/scripts/module3_contact_filter.py"
+
 rule select_top_candidates:
     conda: "../environment.yaml"
     input:
