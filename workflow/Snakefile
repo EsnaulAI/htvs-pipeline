@@ -21,11 +21,11 @@ rule all:
         "results/module3/top_candidates.smi",
         "results/module3/gnina_scores.csv",
         "results/module3/consensus_final.csv",
-        directory("results/module3/vina"),
-        directory("results/module3/vina_logs"),
+        "results/module3/vina",
+        "results/module3/vina_logs",
         expand("results/module3/logs/{ligand}.log", ligand=LIGANDS_PDBQT),
         "results/module3/docking_scores.csv",
-        directory("results/module3/ligands_pdbqt")
+        "results/module3/ligands_pdbqt"
 
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
 
