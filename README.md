@@ -62,3 +62,12 @@ También puedes usar el perfil incluido:
 ```bash
 ./scripts/run_snakemake_conda.sh --cores 4 -s workflow/Snakefile
 ```
+
+Si aparece un error tipo `AttributeError: Can't get attribute 'Namedlist._used_attribute'`,
+asegúrate de recrear los entornos con la versión de Snakemake fijada en los
+YAMLs (borra el prefijo y relanza):
+
+```bash
+rm -rf ~/.snakemake/conda-htvs
+./scripts/run_snakemake_conda.sh --cores 4 -s workflow/Snakefile
+```
