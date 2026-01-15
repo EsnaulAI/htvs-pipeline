@@ -248,13 +248,6 @@ rule qc_properties:
         report="results/module2/qc_report.csv"
     script: 'scripts/module2_qc_properties.py'
 
-# 3. Preparación 3D Paralela
-rule prepare_ligands_3d:
-    conda:
-        "envs/rdkit.yaml"
-    input:
-        smi=config["chemistry"]["filtered_library"],
-        qc_report="results/module2/qc_report.csv"
 # 3. Enumeración de protómeros (pH 7.4 ± 1)
 rule enumerate_protomers:
     conda:
