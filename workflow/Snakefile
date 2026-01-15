@@ -260,7 +260,6 @@ rule enumerate_protomers:
     conda:
         "envs/rdkit.yaml"
     input: smi="results/module2/library_dedup.smi"
-    input: smi=config["chemistry"]["filtered_library"]
     output:
         enumerated="results/module2/library_enumerated.smi"
     script: 'scripts/module2_enumerate_protomers.py'
