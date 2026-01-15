@@ -230,7 +230,8 @@ rule filter_ligands:
     input: smi=config["chemistry"]["raw_library"]
     output:
         filtered=config["chemistry"]["filtered_library"],
-        report="results/module2/filtering_report.csv"
+        report="results/module2/filtering_report.csv",
+        dedup="results/module2/library_dedup.smi"
     params:
         mw=config["chemistry"]["filters"]["mw_max"],
         logp=config["chemistry"]["filters"]["logp_max"],
@@ -241,7 +242,7 @@ rule filter_ligands:
 rule prepare_ligands_3d:
     conda:
         "envs/rdkit.yaml"
-    input: smi=config["chemistry"]["filtered_library"]
+    input: smi="results/module2/library_dedup.smi"
     output: touch("results/module2/preparation_done.flag")
     params: out_dir=config["chemistry"]["prepared_dir"]
     threads: 4
