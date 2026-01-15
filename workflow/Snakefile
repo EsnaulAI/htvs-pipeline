@@ -1,6 +1,7 @@
 configfile: 'config/config.yaml'
 
 USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
+LIGANDS_PDBQT = glob_wildcards("results/module3/ligands_pdbqt/{ligand}.pdbqt").ligand
 
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
@@ -13,6 +14,8 @@ rule all:
         "results/module1/view_scene.cxc",
         "results/module2/qc_report.csv",
         "results/module2/preparation_done.flag",
+        expand("results/module3/docking/{ligand}_out.pdbqt", ligand=LIGANDS_PDBQT),
+        expand("results/module3/docking/{ligand}_score.log", ligand=LIGANDS_PDBQT)
         directory("results/module3/ligands_pdbqt")
 
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
@@ -278,6 +281,37 @@ rule export_ligands_pdbqt:
         pdbqt_dir=directory("results/module2/ligands_pdbqt")
     script: 'scripts/module2_export_pdbqt.py'
 
+# --- MÓDULO 3: DOCKING ---
+
+rule run_smina:
+    input:
+        receptor="results/module1/target_prepared.pdbqt",
+        ligand="results/module3/ligands_pdbqt/{ligand}.pdbqt"
+    output:
+        docked="results/module3/docking/{ligand}_out.pdbqt",
+        log="results/module3/docking/{ligand}_score.log"
+    params:
+        center_x=config["docking"]["center_x"],
+        center_y=config["docking"]["center_y"],
+        center_z=config["docking"]["center_z"],
+        size_x=config["docking"]["size_x"],
+        size_y=config["docking"]["size_y"],
+        size_z=config["docking"]["size_z"]
+    shell:
+        """
+        set -euo pipefail
+        mkdir -p results/module3/docking
+        smina --receptor {input.receptor} \
+            --ligand {input.ligand} \
+            --center_x {params.center_x} \
+            --center_y {params.center_y} \
+            --center_z {params.center_z} \
+            --size_x {params.size_x} \
+            --size_y {params.size_y} \
+            --size_z {params.size_z} \
+            --out {output.docked} \
+            --log {output.log}
+        """
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
 
 rule export_ligands_pdbqt_module3:
