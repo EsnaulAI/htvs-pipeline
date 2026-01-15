@@ -26,3 +26,39 @@ snakemake --use-conda --cores 4
 
 Si prefieres instalar manualmente herramientas externas, usa los entornos en
 `workflow/envs/*.yaml` como plantillas reproducibles.
+
+## Solución de problemas (Conda)
+
+Si Snakemake falla con `Non-conda folder exists at prefix`, limpia el
+directorio de cache de entornos y vuelve a intentar:
+
+```bash
+rm -rf .snakemake/conda
+snakemake --use-conda --cores 4 -s workflow/Snakefile
+```
+
+También puedes usar el script auxiliar:
+
+```bash
+./scripts/clean_snakemake_conda.sh
+snakemake --use-conda --cores 4 -s workflow/Snakefile
+```
+
+Alternativamente, puedes usar un prefijo nuevo para los entornos:
+
+```bash
+snakemake --use-conda --conda-prefix .snakemake/conda-clean --cores 4 -s workflow/Snakefile
+```
+
+Si el error persiste con mamba, prueba el frontend clásico de conda con un
+prefijo dedicado (evita directorios corruptos dentro del repo):
+
+```bash
+snakemake --use-conda --conda-frontend conda --conda-prefix ~/.snakemake/conda-htvs --cores 4 -s workflow/Snakefile
+```
+
+También puedes usar el perfil incluido:
+
+```bash
+./scripts/run_snakemake_conda.sh --cores 4 -s workflow/Snakefile
+```
