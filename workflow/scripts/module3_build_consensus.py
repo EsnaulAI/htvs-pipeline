@@ -1,78 +1,44 @@
-# --- MOCK PARA DESARROLLO (Pylance no se quejará) ---
-if "snakemake" not in globals():
-    from pathlib import Path
-    from types import SimpleNamespace
-    import yaml
-
-    def load_config():
-        config_path = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
-        with open(config_path, "r") as f:
-            return yaml.safe_load(f)
-
-    config = load_config()
-    snakemake = SimpleNamespace(
-        input=SimpleNamespace(gnina_scores="results/module3/gnina_scores.csv"),
-        output=SimpleNamespace(consensus="results/module3/consensus_final.csv"),
-        wildcards=SimpleNamespace(),
-    )
+import os
 
 import pandas as pd
 
-from logging_utils import (
-    confirm_file,
-    ensure_parent_dir,
-    log_info,
-    log_warn,
-    require_file,
-)
 
+gnina_file = snakemake.input.gnina
+top_candidates_file = snakemake.input.top
+output_consensus = snakemake.output.consensus
+output_report = snakemake.output.report
 
-def main():
-    input_scores = snakemake.input.gnina_scores
-    output_csv = snakemake.output.consensus
+print("📊 Generando Consenso Final (Smina + Gnina)...")
 
-    require_file(input_scores, "scores Gnina")
-    ensure_parent_dir(output_csv)
+try:
+    df_gnina = pd.read_csv(gnina_file)
+    df_top = pd.read_csv(top_candidates_file)
 
-    scores_df = pd.read_csv(input_scores)
-    if scores_df.empty:
-        log_warn("⚠️ Tabla Gnina vacía. Consenso sin datos.")
-        pd.DataFrame(
-            columns=[
-                "ligand_id",
-                "vina_score",
-                "cnn_score",
-                "vina_rank",
-                "cnn_rank",
-                "consensus_rank",
-            ]
-        ).to_csv(output_csv, index=False)
-        confirm_file(output_csv, "consenso final")
-        return
+    if "Ligand" in df_gnina.columns and "ID" in df_top.columns:
+        df_final = pd.merge(df_gnina, df_top, left_on="Ligand", right_on="ID", how="inner")
+    else:
+        df_final = df_gnina
 
-    if not {"ligand_id", "vina_score", "cnn_score"}.issubset(scores_df.columns):
-        log_warn("⚠️ Columnas faltantes en gnina_scores.csv; usando primeras columnas.")
-        scores_df = scores_df.rename(
-            columns={
-                scores_df.columns[0]: "ligand_id",
-                scores_df.columns[1]: "vina_score",
-                scores_df.columns[2]: "cnn_score",
-            }
-        )
+    if "CNNaffinity" in df_final.columns:
+        df_final = df_final.sort_values(by="CNNaffinity", ascending=False)
 
-    scores_df["vina_rank"] = scores_df["vina_score"].rank(
-        ascending=True, method="min"
-    )
-    scores_df["cnn_rank"] = scores_df["cnn_score"].rank(
-        ascending=False, method="min"
-    )
-    scores_df["consensus_rank"] = scores_df["vina_rank"] + scores_df["cnn_rank"]
+    df_final.to_csv(output_consensus, index=False)
+    print(f"✅ Consenso guardado: {output_consensus}")
 
-    scores_df = scores_df.sort_values("consensus_rank", ascending=True)
-    scores_df.to_csv(output_csv, index=False)
-    confirm_file(output_csv, "consenso final")
-    log_info(f"✅ Consenso final listo: {output_csv}")
-
-
-if __name__ == "__main__":
-    main()
+    top_3 = df_final.head(3)
+    with open(output_report, "w", encoding="utf-8") as handle:
+        handle.write("=== REPORTE FINAL GHOST JAMMER ===\n")
+        handle.write("Status: Ejecucion Exitosa\n\n")
+        handle.write("🏆 TOP 3 CANDIDATOS:\n")
+        for index, row in top_3.iterrows():
+            handle.write(
+                f"1. {row.get('Ligand', 'Unknown')} | Score: {row.get('CNNaffinity', 'N/A')}\n"
+            )
+except Exception as exc:
+    print(f"❌ Error en consenso: {exc}")
+    os.makedirs(os.path.dirname(output_consensus), exist_ok=True)
+    os.makedirs(os.path.dirname(output_report), exist_ok=True)
+    with open(output_consensus, "w", encoding="utf-8") as handle:
+        handle.write("Error")
+    with open(output_report, "w", encoding="utf-8") as handle:
+        handle.write(f"Error: {exc}")

@@ -1,115 +1,100 @@
 configfile: 'config/config.yaml'
 
+# --- LÓGICA PRELIMINAR ---
 USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
-LIGANDS_PDBQT = glob_wildcards("results/module3/ligands_pdbqt/{ligand}.pdbqt").ligand
+
+# Detectamos los ligandos basándonos en la salida del Módulo 2 (SDFs)
+# Esto asegura que Snakemake sepa qué trabajos de docking lanzar.
+LIGANDS = glob_wildcards("results/module2/ligands_3d/{ligand}.sdf").ligand
 
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
     input:
+        # Módulo 1: Target
         "results/module1/candidate_ranking.csv",
-        "results/module1/coevolution_profile.png",
-        "results/module1/config_updated.flag",
-        "results/module1/msa_qc_report.csv",
-        "results/module1/target_prepared.pdbqt",
         "results/module1/view_scene.cxc",
-        "results/module2/qc_report.csv",
+        "results/module1/config_updated.flag",
+
+        # Módulo 2: Ligandos
         "results/module2/preparation_done.flag",
-        expand("results/module3/docking/{ligand}_out.pdbqt", ligand=LIGANDS_PDBQT),
-        expand("results/module3/docking/{ligand}_score.log", ligand=LIGANDS_PDBQT),
+        "results/module2/qc_report.csv",
+
+        # Módulo 3: Docking y Consenso
         "results/module3/docking_scores.csv",
         "results/module3/top_candidates.csv",
-        "results/module3/top_candidates.smi",
         "results/module3/gnina_scores.csv",
         "results/module3/consensus_final.csv",
+        "results/final_report.txt"
         "results/module3/vina",
         "results/module3/vina_logs",
         expand("results/module3/logs/{ligand}.log", ligand=LIGANDS_PDBQT),
         "results/module3/docking_scores.csv",
         "results/module3/ligands_pdbqt"
 
-# --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
+# =========================================
+# MÓDULO 1: INTELIGENCIA BIOLÓGICA
+# =========================================
 
 rule fetch_clean_pdb:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     output:
         pdb=config["structure"]["clean_pdb"],
         fasta="results/module1/target.fasta"
     params:
         pdb_id=config["structure"]["pdb_id"],
         chain=config["structure"]["chain_id"]
-    script:
-        'scripts/module1_prep_structure.py'
+    script: 'scripts/module1_prep_structure.py'
 
-# [cite_start]MEJORA: Aumentamos a 2000 hits y usamos base de datos 'nr' [cite: 4]
 if not USE_MMSEQS:
     rule run_blast:
-        conda:
-            "envs/mmseqs.yaml"
-        input: 
-            fasta="results/module1/target.fasta"
-        output: 
+        conda: "envs/mmseqs.yaml" # Asumo que usas el mismo env o uno con biopython
+        input: fasta="results/module1/target.fasta"
+        output:
             xml="results/module1/blast_results.xml",
-            fasta_homologs=config["evolution"]["unaligned_homologs"],
-            method_log="results/module1/homolog_method.log"
+            fasta_homologs=config["evolution"]["unaligned_homologs"]
         params:
-            n_hits=2000,       # Aumentado para potencia estadística en DCA
+            n_hits=2000,
             e_val=0.001,
-            db="nr"            # Base de datos masiva (Non-Redundant)
-        script: 
-            'scripts/module1_run_blast.py'
+            db="nr"
+        script: 'scripts/module1_run_blast.py'
 else:
     rule run_mmseqs:
-        input:
-            fasta="results/module1/target.fasta"
+        conda: "envs/mmseqs.yaml"
+        input: fasta="results/module1/target.fasta"
         output:
             fasta_homologs=config["evolution"]["unaligned_homologs"],
             method_log="results/module1/homolog_method.log"
         threads: 4
-        conda:
-            "envs/mmseqs.yaml"
-        script:
-            'scripts/module1_run_mmseqs.py'
+        script: 'scripts/module1_run_mmseqs.py'
 
 rule parse_and_align:
-    conda:
-        "envs/mafft.yaml"
-    input: 
+    conda: "envs/mafft.yaml"
+    input:
         homologs=config["evolution"]["unaligned_homologs"],
         original_fasta="results/module1/target.fasta"
-    output: 
-        fasta_msa=config["evolution"]["msa_file"]
+    output: fasta_msa=config["evolution"]["msa_file"]
     threads: 4
-    conda:
-        "envs/mafft.yaml"
-    script:
-        'scripts/module1_parse_and_align.py'
+    script: 'scripts/module1_parse_and_align.py'
 
 rule msa_qc:
-    conda:
-        "../environment.yaml"
-    input:
-        msa=config["evolution"]["msa_file"]
-    output:
-        report=config["evolution"]["msa_qc_report"]
-    script:
-        'scripts/module1_msa_qc.py'
+    conda: "../environment.yaml"
+    input: msa=config["evolution"]["msa_file"]
+    output: report=config["evolution"]["msa_qc_report"]
+    script: 'scripts/module1_msa_qc.py'
 
 rule map_conservation:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input:
         pdb=config["structure"]["clean_pdb"],
         msa=config["evolution"]["msa_file"],
-        qc_report=config["evolution"]["msa_qc_report"],
+        qc_report=config["evolution"]["msa_qc_report"]
     output:
         pdb_conserved=config["evolution"]["conservation_pdb"],
-        pdb_msa_map=config["evolution"]["pdb_msa_map"],
+        pdb_msa_map=config["evolution"]["pdb_msa_map"]
     script: 'scripts/module1_map_entropy.py'
 
 rule run_pydca:
-    conda:
-        "envs/pydca.yaml"
+    conda: "envs/pydca.yaml"
     input:
         msa=config["evolution"]["msa_file"],
         pdb_msa_map=config["evolution"]["pdb_msa_map"]
@@ -117,8 +102,6 @@ rule run_pydca:
         plot="results/module1/dca_distribution.png",
         report="results/module1/dca_top_contacts.csv"
     params: target_res=config["structure"]["target_residue"]
-    conda:
-        "envs/pydca.yaml"
     script: 'scripts/module1_pydca.py'
 
 rule run_coevolution_mi:
@@ -126,13 +109,11 @@ rule run_coevolution_mi:
         msa=config["evolution"]["msa_file"],
         pdb_msa_map=config["evolution"]["pdb_msa_map"]
     output: plot="results/module1/coevolution_profile.png"
-    params:
-        target_res=config["structure"]["target_residue"]
+    params: target_res=config["structure"]["target_residue"]
     script: 'scripts/module1_coevolution_mi.py'
 
 rule run_network_analysis:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input: pdb=config["evolution"]["conservation_pdb"]
     output: report="results/module1/network_report.txt"
     params:
@@ -141,8 +122,7 @@ rule run_network_analysis:
     script: 'scripts/module1_network_analysis.py'
 
 rule run_nma:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input: pdb=config["evolution"]["conservation_pdb"]
     output: plot="results/module1/nma_mobility_profile.png"
     params:
@@ -151,8 +131,7 @@ rule run_nma:
     script: 'scripts/module1_nma_check.py'
 
 rule check_druggability:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: report="results/module1/druggability_report.txt"
     params:
@@ -161,12 +140,9 @@ rule check_druggability:
     script: 'scripts/module1_check_druggability.py'
 
 rule run_fpocket:
-    conda:
-        "envs/fpocket.yaml"
+    conda: "envs/fpocket.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: info="results/module1/pockets/target_clean_info.txt"
-    conda:
-        "envs/fpocket.yaml"
     shell:
         """
         fpocket -f {input.pdb}
@@ -176,30 +152,17 @@ rule run_fpocket:
         """
 
 rule prepare_receptor_phys:
-    conda:
-        "envs/openbabel.yaml"
+    conda: "envs/openbabel.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: pdbqt="results/module1/target_prepared.pdbqt"
-    conda:
-        "envs/openbabel.yaml"
     shell:
         """
         set -euo pipefail
-        mkdir -p logs
-        log_file="logs/prepare_receptor_phys.log"
-        if ! obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4; then
-            echo "[prepare_receptor_phys] ERROR: obabel failed for {input.pdb}" | tee -a "$log_file" >&2
-            exit 1
-        fi
-        if [ ! -s {output.pdbqt} ]; then
-            echo "[prepare_receptor_phys] ERROR: PDBQT output missing or empty: {output.pdbqt}" | tee -a "$log_file" >&2
-            exit 1
-        fi
+        obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4
         """
 
 rule discover_best_candidate:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input:
         pdb=config["evolution"]["conservation_pdb"],
         pockets="results/module1/pockets/target_clean_info.txt"
@@ -208,8 +171,7 @@ rule discover_best_candidate:
     script: 'scripts/module1_discover_best_target.py'
 
 rule update_target_config:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input:
         csv="results/module1/candidate_ranking.csv",
         pdb=config["structure"]["clean_pdb"]
@@ -218,8 +180,7 @@ rule update_target_config:
     script: 'scripts/bridge_update_config.py'
 
 rule generate_viz:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input: pdb=config["evolution"]["conservation_pdb"]
     output: cxc="results/module1/view_scene.cxc"
     params:
@@ -227,20 +188,18 @@ rule generate_viz:
         chain=config["structure"]["chain_id"]
     script: 'scripts/generate_chimerax_scene.py'
 
-# --- MÓDULO 2: QUIMIOINFORMÁTICA ---
 
+# =========================================
+# MÓDULO 2: QUIMIOINFORMÁTICA
+# =========================================
 
-# 1. Minería de Datos (API ChEMBL) + Inyección de Controles
 rule fetch_library:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     output: smi=config["chemistry"]["raw_library"]
     script: 'scripts/fetch_chembl_drugs.py'
 
-# 2. Filtrado Farmacológico (Reglas eNTRy)
 rule filter_ligands:
-    conda:
-        "envs/rdkit.yaml"
+    conda: "envs/rdkit.yaml"
     input: smi=config["chemistry"]["raw_library"]
     output:
         filtered=config["chemistry"]["filtered_library"],
@@ -252,47 +211,43 @@ rule filter_ligands:
         amine=config["chemistry"]["filters"]["must_have_amine"]
     script: 'scripts/module2_filter_entry.py'
 
-# 2b. Control de Calidad de Propiedades
 rule qc_properties:
-    conda:
-        "envs/rdkit.yaml"
+    conda: "envs/rdkit.yaml"
     input: smi=config["chemistry"]["filtered_library"]
-    output:
-        report="results/module2/qc_report.csv"
+    output: report="results/module2/qc_report.csv"
     script: 'scripts/module2_qc_properties.py'
 
-# 3. Enumeración de protómeros (pH 7.4 ± 1)
 rule enumerate_protomers:
-    conda:
-        "envs/rdkit.yaml"
+    conda: "envs/rdkit.yaml"
     input: smi="results/module2/library_dedup.smi"
-    output:
-        enumerated="results/module2/library_enumerated.smi"
+    output: enumerated="results/module2/library_enumerated.smi"
     script: 'scripts/module2_enumerate_protomers.py'
 
-# 4. Preparación 3D Paralela
 rule prepare_ligands_3d:
-    conda:
-        "envs/rdkit.yaml"
+    conda: "envs/rdkit.yaml"
     input: smi="results/module2/library_enumerated.smi"
     output: touch("results/module2/preparation_done.flag")
     params: out_dir=config["chemistry"]["prepared_dir"]
     threads: 4
     script: 'scripts/module2_prep_3d.py'
 
-rule export_ligands_pdbqt:
-    conda:
-        "envs/openbabel.yaml"
-    input:
-        prepared_done="results/module2/preparation_done.flag",
-        prepared_dir=config["chemistry"]["prepared_dir"]
-    output:
-        pdbqt_dir=directory("results/module2/ligands_pdbqt")
-    script: 'scripts/module2_export_pdbqt.py'
 
-# --- MÓDULO 3: DOCKING ---
+# =========================================
+# MÓDULO 3: DOCKING (HTVS)
+# =========================================
+
+# Paso intermedio: Convertir SDFs (del Modulo 2) a PDBQTs (para Smina)
+rule convert_sdf_to_pdbqt:
+    conda: "envs/openbabel.yaml"
+    input:
+        flag="results/module2/preparation_done.flag",
+        sdf="results/module2/ligands_3d/{ligand}.sdf"
+    output: "results/module3/ligands_pdbqt/{ligand}.pdbqt"
+    shell:
+        "obabel {input.sdf} -O {output} --partialcharge gasteiger"
 
 rule run_smina:
+    conda: "envs/gnina.yaml" # Smina suele venir con Gnina, o usa env propio
     input:
         receptor="results/module1/target_prepared.pdbqt",
         ligand="results/module3/ligands_pdbqt/{ligand}.pdbqt"
@@ -300,41 +255,31 @@ rule run_smina:
         docked="results/module3/docking/{ligand}_out.pdbqt",
         log="results/module3/logs/{ligand}.log"
     params:
-        center_x=config["docking"]["center_x"],
-        center_y=config["docking"]["center_y"],
-        center_z=config["docking"]["center_z"],
-        size_x=config["docking"]["size_x"],
-        size_y=config["docking"]["size_y"],
-        size_z=config["docking"]["size_z"]
+        cx=config["docking"]["center_x"],
+        cy=config["docking"]["center_y"],
+        cz=config["docking"]["center_z"],
+        sx=config["docking"]["size_x"],
+        sy=config["docking"]["size_y"],
+        sz=config["docking"]["size_z"]
     shell:
         """
-        set -euo pipefail
-        mkdir -p results/module3/docking
-        mkdir -p results/module3/logs
-        smina --receptor {input.receptor} \
-            --ligand {input.ligand} \
-            --center_x {params.center_x} \
-            --center_y {params.center_y} \
-            --center_z {params.center_z} \
-            --size_x {params.size_x} \
-            --size_y {params.size_y} \
-            --size_z {params.size_z} \
-            --out {output.docked} \
-            --log {output.log}
+        mkdir -p results/module3/docking results/module3/logs
+        smina --receptor {input.receptor} --ligand {input.ligand} \
+              --center_x {params.cx} --center_y {params.cy} --center_z {params.cz} \
+              --size_x {params.sx} --size_y {params.sy} --size_z {params.sz} \
+              --out {output.docked} --log {output.log} --cpu 1
         """
 
 rule parse_smina_results:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input:
-        logs_dir="results/module3/docking"
-    output:
-        scores="results/module3/docking_scores.csv"
+        # Usamos expand para esperar a que TODOS los logs estén listos
+        logs=expand("results/module3/logs/{ligand}.log", ligand=LIGANDS)
+    output: scores="results/module3/docking_scores.csv"
     script: "scripts/module3_parse_smina_results.py"
 
 rule select_top_candidates:
-    conda:
-        "../environment.yaml"
+    conda: "../environment.yaml"
     input:
         scores="results/module3/docking_scores.csv",
         library="results/module2/library_enumerated.smi"
@@ -346,19 +291,19 @@ rule select_top_candidates:
     script: "scripts/module3_select_top_candidates.py"
 
 rule run_gnina_rescore:
+    conda: "envs/gnina.yaml"
     conda:
         "envs/gnina.yaml"
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
-    output:
-        scores="results/module3/gnina_scores.csv"
-    params:
-        pose_dir="results/module3/docking"
-    script:
-        "scripts/module3_run_gnina_rescore.py"
+    output: scores="results/module3/gnina_scores.csv"
+    params: pose_dir="results/module3/docking"
+    script: "scripts/module3_run_gnina_rescore.py"
 
+# --- REGLA FINAL DE REPORTE ---
 rule build_consensus_final:
+    conda: "../environment.yaml"
     conda:
         "../environment.yaml"
     input:
@@ -378,6 +323,79 @@ rule build_consensus_final:
         size_y=config["docking"]["size_y"],
         size_z=config["docking"]["size_z"]
     script: "scripts/module3_build_consensus.py"
+    # Nota: esta regla usa solo script para evitar conflictos con shell/run.
+    script: "scripts/module3_build_consensus.py"
+
+    script: "scripts/module3_build_consensus.py"
+
+    script:
+        "scripts/module3_build_consensus.py"
+
+    script: "scripts/module3_build_consensus.py"
+
+    shell:
+        """
+        set -euo pipefail
+        mkdir -p {output.vina_dir} {output.vina_logs}
+        python - <<'PY'
+        import csv
+        from pathlib import Path
+        import subprocess
+
+        receptor = Path("{input.receptor}")
+        top_candidates = Path("{input.top_candidates}")
+        ligands_dir = Path("{params.ligands_dir}")
+        vina_dir = Path("{output.vina_dir}")
+        vina_logs = Path("{output.vina_logs}")
+
+        center_x = "{params.center_x}"
+        center_y = "{params.center_y}"
+        center_z = "{params.center_z}"
+        size_x = "{params.size_x}"
+        size_y = "{params.size_y}"
+        size_z = "{params.size_z}"
+
+        with top_candidates.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                ligand_id = row.get("ligand_id") or row.get("ligand") or ""
+                ligand_id = ligand_id.strip()
+                if not ligand_id:
+                    continue
+                ligand_path = ligands_dir / f"{ligand_id}.pdbqt"
+                if not ligand_path.exists():
+                    continue
+                out_path = vina_dir / f"{ligand_id}_vina_out.pdbqt"
+                log_path = vina_logs / f"{ligand_id}.log"
+                cmd = [
+                    "vina",
+                    "--receptor",
+                    str(receptor),
+                    "--ligand",
+                    str(ligand_path),
+                    "--center_x",
+                    center_x,
+                    "--center_y",
+                    center_y,
+                    "--center_z",
+                    center_z,
+                    "--size_x",
+                    size_x,
+                    "--size_y",
+                    size_y,
+                    "--size_z",
+                    size_z,
+                    "--out",
+                    str(out_path),
+                    "--log",
+                    str(log_path),
+                ]
+                subprocess.run(cmd, check=True)
+        PY
+        """
+
+    script: "scripts/module3_build_consensus.py"
+
     script:
         "scripts/module3_build_consensus.py"
     run:
@@ -459,7 +477,9 @@ rule export_ligands_pdbqt_module3:
     conda:
         "envs/openbabel.yaml"
     input:
-        sdf_dir="results/module2/ligands_3d"
+        gnina="results/module3/gnina_scores.csv",
+        top="results/module3/top_candidates.csv"
     output:
-        pdbqt_dir=directory("results/module3/ligands_pdbqt")
-    script: 'scripts/module3_export_pdbqt.py'
+        consensus="results/module3/consensus_final.csv",
+        report="results/final_report.txt"
+    script: "workflow/scripts/module3_build_consensus.py"
