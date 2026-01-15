@@ -6,6 +6,7 @@ USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
 # Detectamos los ligandos basándonos en la salida del Módulo 2 (SDFs)
 # Esto asegura que Snakemake sepa qué trabajos de docking lanzar.
 LIGANDS = glob_wildcards("results/module2/ligands_3d/{ligand}.sdf").ligand
+LIGANDS_PDBQT = glob_wildcards("results/module3/ligands_pdbqt/{ligand}.pdbqt").ligand
 
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
@@ -294,7 +295,6 @@ rule select_top_candidates:
     script: "workflow/scripts/module3_select_top_candidates.py"
 
 rule run_gnina_rescore:
-    conda: "envs/gnina.yaml"
     conda:
         "envs/gnina.yaml"
     input:
