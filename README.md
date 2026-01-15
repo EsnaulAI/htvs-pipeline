@@ -49,3 +49,16 @@ Alternativamente, puedes usar un prefijo nuevo para los entornos:
 ```bash
 snakemake --use-conda --conda-prefix .snakemake/conda-clean --cores 4 -s workflow/Snakefile
 ```
+
+Si el error persiste con mamba, prueba el frontend clásico de conda con un
+prefijo dedicado (evita directorios corruptos dentro del repo):
+
+```bash
+snakemake --use-conda --conda-frontend conda --conda-prefix ~/.snakemake/conda-htvs --cores 4 -s workflow/Snakefile
+```
+
+También puedes usar el perfil incluido:
+
+```bash
+./scripts/run_snakemake_conda.sh --cores 4 -s workflow/Snakefile
+```
