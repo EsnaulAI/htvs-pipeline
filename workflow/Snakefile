@@ -4,8 +4,6 @@ USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
 
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
-    conda:
-        "../environment.yaml"
     input:
         "results/module1/candidate_ranking.csv",
         "results/module1/coevolution_profile.png",
@@ -33,7 +31,7 @@ rule fetch_clean_pdb:
 if not USE_MMSEQS:
     rule run_blast:
         conda:
-            "workflow/envs/mmseqs.yaml"
+            "envs/mmseqs.yaml"
         input: 
             fasta="results/module1/target.fasta"
         output: 
@@ -55,13 +53,11 @@ else:
             method_log="results/module1/homolog_method.log"
         threads: 4
         conda:
-            "workflow/envs/mmseqs.yaml"
+            "envs/mmseqs.yaml"
         script:
             'scripts/module1_run_mmseqs.py'
 
 rule parse_and_align:
-    conda:
-        "envs/mafft.yaml"
     input: 
         homologs=config["evolution"]["unaligned_homologs"],
         original_fasta="results/module1/target.fasta"
@@ -69,7 +65,7 @@ rule parse_and_align:
         fasta_msa=config["evolution"]["msa_file"]
     threads: 4
     conda:
-        "workflow/envs/mafft.yaml"
+        "envs/mafft.yaml"
     script:
         'scripts/module1_parse_and_align.py'
 
@@ -96,8 +92,6 @@ rule map_conservation:
     script: 'scripts/module1_map_entropy.py'
 
 rule run_pydca:
-    conda:
-        "envs/pydca.yaml"
     input:
         msa=config["evolution"]["msa_file"],
         pdb_msa_map=config["evolution"]["pdb_msa_map"]
@@ -106,7 +100,7 @@ rule run_pydca:
         report="results/module1/dca_top_contacts.csv"
     params: target_res=config["structure"]["target_residue"]
     conda:
-        "workflow/envs/pydca.yaml"
+        "envs/pydca.yaml"
     script: 'scripts/module1_pydca.py'
 
 rule run_coevolution_mi:
@@ -149,12 +143,10 @@ rule check_druggability:
     script: 'scripts/module1_check_druggability.py'
 
 rule run_fpocket:
-    conda:
-        "envs/fpocket.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: info="results/module1/pockets/target_clean_info.txt"
     conda:
-        "workflow/envs/fpocket.yaml"
+        "envs/fpocket.yaml"
     shell:
         """
         fpocket -f {input.pdb}
@@ -164,12 +156,10 @@ rule run_fpocket:
         """
 
 rule prepare_receptor_phys:
-    conda:
-        "envs/openbabel.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: pdbqt="results/module1/target_prepared.pdbqt"
     conda:
-        "workflow/envs/openbabel.yaml"
+        "envs/openbabel.yaml"
     shell:
         """
         set -euo pipefail
