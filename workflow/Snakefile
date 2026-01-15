@@ -4,8 +4,6 @@ USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
 
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
-    conda:
-        "../environment.yaml"
     input:
         "results/module1/candidate_ranking.csv",
         "results/module1/coevolution_profile.png",
