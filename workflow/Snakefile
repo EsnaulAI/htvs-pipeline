@@ -33,7 +33,7 @@ rule fetch_clean_pdb:
 if not USE_MMSEQS:
     rule run_blast:
         conda:
-            "workflow/envs/mmseqs.yaml"
+            "envs/mmseqs.yaml"
         input: 
             fasta="results/module1/target.fasta"
         output: 
@@ -55,7 +55,7 @@ else:
             method_log="results/module1/homolog_method.log"
         threads: 4
         conda:
-            "workflow/envs/mmseqs.yaml"
+            "envs/mmseqs.yaml"
         script:
             'scripts/module1_run_mmseqs.py'
 
@@ -69,7 +69,7 @@ rule parse_and_align:
         fasta_msa=config["evolution"]["msa_file"]
     threads: 4
     conda:
-        "workflow/envs/mafft.yaml"
+        "envs/mafft.yaml"
     script:
         'scripts/module1_parse_and_align.py'
 
@@ -106,7 +106,7 @@ rule run_pydca:
         report="results/module1/dca_top_contacts.csv"
     params: target_res=config["structure"]["target_residue"]
     conda:
-        "workflow/envs/pydca.yaml"
+        "envs/pydca.yaml"
     script: 'scripts/module1_pydca.py'
 
 rule run_coevolution_mi:
@@ -154,7 +154,7 @@ rule run_fpocket:
     input: pdb=config["structure"]["clean_pdb"]
     output: info="results/module1/pockets/target_clean_info.txt"
     conda:
-        "workflow/envs/fpocket.yaml"
+        "envs/fpocket.yaml"
     shell:
         """
         fpocket -f {input.pdb}
@@ -169,7 +169,7 @@ rule prepare_receptor_phys:
     input: pdb=config["structure"]["clean_pdb"]
     output: pdbqt="results/module1/target_prepared.pdbqt"
     conda:
-        "workflow/envs/openbabel.yaml"
+        "envs/openbabel.yaml"
     shell:
         """
         set -euo pipefail
