@@ -10,6 +10,7 @@ if "snakemake" not in globals():
         wildcards=SimpleNamespace()
     )
 # ----------------------------------------------------
+import os
 import sys
 from Bio.PDB import PDBList, PDBParser, Select, PDBIO, Polypeptide
 from logging_utils import (
@@ -32,6 +33,7 @@ log_info(f"🔬 Iniciando descarga y limpieza de {pdb_id} cadena {chain_target}.
 
 # 1. Descargar
 pdbl = PDBList()
+os.makedirs("data/raw", exist_ok=True)
 pdb_file = pdbl.retrieve_pdb_file(pdb_id, pdir="data/raw", file_format="pdb")
 
 # 2. Parsear y Limpiar
