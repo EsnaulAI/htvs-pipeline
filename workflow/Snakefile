@@ -348,7 +348,6 @@ rule select_top_candidates:
 rule run_gnina_rescore:
     conda:
         "envs/gnina.yaml"
-rule run_vina_top:
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
