@@ -1,0 +1,7 @@
+name: gnina
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - gnina
