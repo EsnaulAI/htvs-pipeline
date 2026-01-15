@@ -246,3 +246,13 @@ rule prepare_ligands_3d:
     params: out_dir=config["chemistry"]["prepared_dir"]
     threads: 4
     script: 'scripts/module2_prep_3d.py'
+
+rule export_ligands_pdbqt:
+    conda:
+        "envs/openbabel.yaml"
+    input:
+        prepared_done="results/module2/preparation_done.flag",
+        prepared_dir=config["chemistry"]["prepared_dir"]
+    output:
+        pdbqt_dir=directory("results/module2/ligands_pdbqt")
+    script: 'scripts/module2_export_pdbqt.py'
