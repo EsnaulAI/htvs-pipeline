@@ -6,6 +6,7 @@ USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
 # Detectamos los ligandos basándonos en la salida del Módulo 2 (SDFs)
 # Esto asegura que Snakemake sepa qué trabajos de docking lanzar.
 LIGANDS = glob_wildcards("results/module2/ligands_3d/{ligand}.sdf").ligand
+LIGANDS_PDBQT = glob_wildcards("results/module3/ligands_pdbqt/{ligand}.pdbqt").ligand
 
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
@@ -294,7 +295,6 @@ rule select_top_candidates:
     script: "workflow/scripts/module3_select_top_candidates.py"
 
 rule run_gnina_rescore:
-    conda: "envs/gnina.yaml"
     conda:
         "envs/gnina.yaml"
     input:
@@ -323,17 +323,6 @@ rule build_consensus_final:
         size_z=config["docking"]["size_z"]
     script: "workflow/scripts/module3_build_consensus.py"
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
-
-rule parse_smina_results:
-    input:
-        logs=expand("results/module3/logs/{ligand}.log", ligand=LIGANDS_PDBQT),
-        poses=expand("results/module3/docking/{ligand}_out.pdbqt", ligand=LIGANDS_PDBQT)
-    output:
-        scores="results/module3/docking_scores.csv"
-    params:
-        pose_dir="results/module3/docking"
-    script:
-        "workflow/scripts/module3_parse_smina_results.py"
 
 rule export_ligands_pdbqt_module3:
     conda:
