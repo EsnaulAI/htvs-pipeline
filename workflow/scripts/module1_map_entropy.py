@@ -16,7 +16,8 @@ import json
 import math
 from Bio import AlignIO, pairwise2
 from Bio.PDB import PDBParser, PDBIO
-from Bio.PDB.Polypeptide import is_aa, three_to_one
+from Bio.PDB.Polypeptide import is_aa
+from Bio.SeqUtils import seq1
 
 def extract_chain_sequence(structure, chain_id=None):
     model = next(structure.get_models())
@@ -27,7 +28,7 @@ def extract_chain_sequence(structure, chain_id=None):
     else:
         chain = next(model.get_chains())
     residues = [res for res in chain.get_residues() if is_aa(res, standard=True)]
-    sequence = "".join(three_to_one(res.get_resname()) for res in residues)
+    sequence = "".join(seq1(res.get_resname(), custom_map={"SEC": "U", "PYL": "O"}) for res in residues)
     return residues, sequence, chain.id
 
 
