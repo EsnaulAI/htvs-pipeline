@@ -71,3 +71,18 @@ YAMLs (borra el prefijo y relanza):
 rm -rf ~/.snakemake/conda-htvs
 ./scripts/run_snakemake_conda.sh --cores 4 -s workflow/Snakefile
 ```
+
+Si aparece un `LockException` indicando que el directorio no puede ser
+bloqueado, libera el bloqueo y reintenta:
+
+```bash
+snakemake --unlock -s workflow/Snakefile
+./scripts/run_snakemake_conda.sh --cores 4 -s workflow/Snakefile
+```
+
+También puedes usar el script auxiliar:
+
+```bash
+./scripts/unlock_snakemake.sh
+./scripts/run_snakemake_conda.sh --cores 4 -s workflow/Snakefile
+```
