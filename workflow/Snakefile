@@ -33,6 +33,8 @@ rule all:
         expand("results/module3/ligands_pdbqt/{ligand}.pdbqt", ligand=LIGANDS),
         expand("results/module3/logs/{ligand}.log", ligand=LIGANDS),
         "results/module3/docking_scores.csv"
+        "results/module3/docking_scores.csv",
+        expand("results/module3/ligands_pdbqt/{ligand}.pdbqt", ligand=LIGANDS)
 
 # =========================================
 # MÓDULO 1: INTELIGENCIA BIOLÓGICA
