@@ -21,11 +21,11 @@ rule all:
         "results/module3/top_candidates.smi",
         "results/module3/gnina_scores.csv",
         "results/module3/consensus_final.csv",
-        directory("results/module3/vina"),
-        directory("results/module3/vina_logs"),
+        "results/module3/vina",
+        "results/module3/vina_logs",
         expand("results/module3/logs/{ligand}.log", ligand=LIGANDS_PDBQT),
         "results/module3/docking_scores.csv",
-        directory("results/module3/ligands_pdbqt")
+        "results/module3/ligands_pdbqt"
 
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
 
@@ -348,7 +348,6 @@ rule select_top_candidates:
 rule run_gnina_rescore:
     conda:
         "envs/gnina.yaml"
-rule run_vina_top:
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
@@ -363,11 +362,11 @@ rule build_consensus_final:
     conda:
         "../environment.yaml"
     input:
-        gnina_scores="results/module3/gnina_scores.csv"
+        gnina_scores="results/module3/gnina_scores.csv",
+        receptor="results/module1/target_prepared.pdbqt",
+        top_candidates="results/module3/top_candidates.csv"
     output:
-        consensus="results/module3/consensus_final.csv"
-    script:
-        "scripts/module3_build_consensus.py"
+        consensus="results/module3/consensus_final.csv",
         vina_dir=directory("results/module3/vina"),
         vina_logs=directory("results/module3/vina_logs")
     params:
@@ -378,66 +377,7 @@ rule build_consensus_final:
         size_x=config["docking"]["size_x"],
         size_y=config["docking"]["size_y"],
         size_z=config["docking"]["size_z"]
-    shell:
-        """
-        set -euo pipefail
-        mkdir -p {output.vina_dir} {output.vina_logs}
-        python - <<'PY'
-        import csv
-        from pathlib import Path
-        import subprocess
-
-        receptor = Path("{input.receptor}")
-        top_candidates = Path("{input.top_candidates}")
-        ligands_dir = Path("{params.ligands_dir}")
-        vina_dir = Path("{output.vina_dir}")
-        vina_logs = Path("{output.vina_logs}")
-
-        center_x = "{params.center_x}"
-        center_y = "{params.center_y}"
-        center_z = "{params.center_z}"
-        size_x = "{params.size_x}"
-        size_y = "{params.size_y}"
-        size_z = "{params.size_z}"
-
-        with top_candidates.open(newline="", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
-            for row in reader:
-                ligand_id = row.get("ligand_id") or row.get("ligand") or ""
-                ligand_id = ligand_id.strip()
-                if not ligand_id:
-                    continue
-                ligand_path = ligands_dir / f"{ligand_id}.pdbqt"
-                if not ligand_path.exists():
-                    continue
-                out_path = vina_dir / f"{ligand_id}_vina_out.pdbqt"
-                log_path = vina_logs / f"{ligand_id}.log"
-                cmd = [
-                    "vina",
-                    "--receptor",
-                    str(receptor),
-                    "--ligand",
-                    str(ligand_path),
-                    "--center_x",
-                    center_x,
-                    "--center_y",
-                    center_y,
-                    "--center_z",
-                    center_z,
-                    "--size_x",
-                    size_x,
-                    "--size_y",
-                    size_y,
-                    "--size_z",
-                    size_z,
-                    "--out",
-                    str(out_path),
-                    "--log",
-                    str(log_path),
-                ]
-                subprocess.run(cmd, check=True)
-        PY
-        """
+    script: "scripts/module3_build_consensus.py"
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
 
 rule parse_smina_results:
