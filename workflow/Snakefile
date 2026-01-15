@@ -238,11 +238,21 @@ rule filter_ligands:
         amine=config["chemistry"]["filters"]["must_have_amine"]
     script: 'scripts/module2_filter_entry.py'
 
-# 3. Preparación 3D Paralela
-rule prepare_ligands_3d:
+# 3. Enumeración de protómeros (pH 7.4 ± 1)
+rule enumerate_protomers:
     conda:
         "envs/rdkit.yaml"
     input: smi="results/module2/library_dedup.smi"
+    input: smi=config["chemistry"]["filtered_library"]
+    output:
+        enumerated="results/module2/library_enumerated.smi"
+    script: 'scripts/module2_enumerate_protomers.py'
+
+# 4. Preparación 3D Paralela
+rule prepare_ligands_3d:
+    conda:
+        "envs/rdkit.yaml"
+    input: smi="results/module2/library_enumerated.smi"
     output: touch("results/module2/preparation_done.flag")
     params: out_dir=config["chemistry"]["prepared_dir"]
     threads: 4
