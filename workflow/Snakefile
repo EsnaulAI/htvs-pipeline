@@ -19,6 +19,7 @@ rule all:
         "results/module3/docking_scores.csv",
         "results/module3/top_candidates.csv",
         "results/module3/top_candidates.smi",
+        expand("results/module3/logs/{ligand}.log", ligand=LIGANDS_PDBQT),
         directory("results/module3/ligands_pdbqt")
 
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
@@ -292,7 +293,7 @@ rule run_smina:
         ligand="results/module3/ligands_pdbqt/{ligand}.pdbqt"
     output:
         docked="results/module3/docking/{ligand}_out.pdbqt",
-        log="results/module3/docking/{ligand}_score.log"
+        log="results/module3/logs/{ligand}.log"
     params:
         center_x=config["docking"]["center_x"],
         center_y=config["docking"]["center_y"],
@@ -304,6 +305,7 @@ rule run_smina:
         """
         set -euo pipefail
         mkdir -p results/module3/docking
+        mkdir -p results/module3/logs
         smina --receptor {input.receptor} \
             --ligand {input.ligand} \
             --center_x {params.center_x} \
