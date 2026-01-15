@@ -24,8 +24,10 @@ if "snakemake" not in globals():
         wildcards=SimpleNamespace()
     )
 # ----------------------------------------------------
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from Bio import SeqIO
 import yaml
@@ -37,6 +39,7 @@ def load_config():
 from logging_utils import (
     confirm_file,
     ensure_parent_dir,
+    log_error,
     log_info,
     log_warn,
     require_file,
@@ -47,14 +50,12 @@ orig_fasta = snakemake.input.original_fasta
 msa_output = snakemake.output.fasta_msa
 threads = snakemake.threads
 config = load_config()
-mafft_log = Path("results/module1/mafft.log")
 min_msa_sequences = config["evolution"].get("min_msa_sequences", 5)
 min_msa_length = config["evolution"].get("min_msa_length", 50)
 
 require_file(homologs_input, "FASTA de homologos")
 require_file(orig_fasta, "FASTA original")
 ensure_parent_dir(msa_output)
-ensure_parent_dir(mafft_log)
 
 log_info("📖 Leyendo homologos y preparando alineamiento...")
 
@@ -66,17 +67,19 @@ if len(hits) < 5:
 
 log_info("🧬 Ejecutando MAFFT (Alineamiento Múltiple)...")
 temp_fasta = homologs_input
-cmd = f"mafft --auto --quiet --thread {threads} {temp_fasta} > {msa_output}"
+temp_log_path = None
 try:
-    subprocess.run(cmd, shell=True, check=True)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False) as log_handle:
+        temp_log_path = log_handle.name
+        cmd = ["mafft", "--auto", "--quiet", "--thread", str(threads), temp_fasta]
+        with open(msa_output, "w") as msa_handle:
+            subprocess.run(cmd, check=True, stdout=msa_handle, stderr=log_handle)
 except subprocess.CalledProcessError as exc:
     log_error(f"❌ Error ejecutando MAFFT: {exc}")
     sys.exit(1)
-cmd = ["mafft", "--auto", "--quiet", "--thread", str(threads), temp_fasta]
-with open(msa_output, "w") as msa_handle, open(mafft_log, "w") as log_handle:
-    subprocess.run(cmd, check=True, stdout=msa_handle, stderr=log_handle)
-cmd = f"mafft --auto --quiet --thread {threads} {homologs_input} > {msa_output}"
-subprocess.run(cmd, shell=True, check=True)
+finally:
+    if temp_log_path:
+        os.unlink(temp_log_path)
 
 print("✅ Alineamiento completado.")
 confirm_file(msa_output, "MSA generado")
