@@ -1,7 +1,8 @@
-name: htvs-fpocket
 name: fpocket
 channels:
   - conda-forge
   - bioconda
 dependencies:
+  - python=3.10.*
+  - snakemake=7.32.4
   - fpocket>=4.0
