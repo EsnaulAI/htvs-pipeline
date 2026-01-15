@@ -2,6 +2,38 @@ import requests
 import sys
 import time
 
+def fetch_all_molecules(base_url, params):
+    molecules = []
+    next_url = base_url
+    next_params = params.copy()
+
+    while True:
+        response = requests.get(next_url, params=next_params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+
+        molecules.extend(data.get('molecules', []))
+
+        page_meta = data.get('page_meta') or {}
+        next_link = page_meta.get('next')
+        if next_link:
+            next_url = next_link
+            next_params = None
+            continue
+
+        total_count = page_meta.get('total_count')
+        offset = page_meta.get('offset')
+        limit = page_meta.get('limit')
+        if total_count is not None and offset is not None and limit is not None and (offset + limit) < total_count:
+            next_url = base_url
+            next_params = params.copy()
+            next_params['offset'] = offset + limit
+            continue
+
+        break
+
+    return molecules
+
 def main():
     output_file = snakemake.output.smi
     
@@ -20,11 +52,7 @@ def main():
     print(f"    Endpoint: {base_url}")
     
     try:
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()
-        data = response.json()
-        
-        molecules = data.get('molecules', [])
+        molecules = fetch_all_molecules(base_url, params)
         print(f"✅ Se recibieron {len(molecules)} estructuras de la API.")
         
         # Guardamos en formato SMILES
