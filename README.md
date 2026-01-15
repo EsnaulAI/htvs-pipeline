@@ -37,6 +37,13 @@ rm -rf .snakemake/conda
 snakemake --use-conda --cores 4 -s workflow/Snakefile
 ```
 
+También puedes usar el script auxiliar:
+
+```bash
+./scripts/clean_snakemake_conda.sh
+snakemake --use-conda --cores 4 -s workflow/Snakefile
+```
+
 Alternativamente, puedes usar un prefijo nuevo para los entornos:
 
 ```bash
