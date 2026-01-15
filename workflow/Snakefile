@@ -438,6 +438,72 @@ rule build_consensus_final:
         PY
         """
 
+    script: "scripts/module3_build_consensus.py"
+
+    script:
+        "scripts/module3_build_consensus.py"
+    run:
+        shell(
+            """
+            set -euo pipefail
+            mkdir -p {output.vina_dir} {output.vina_logs}
+            python - <<'PY'
+            import csv
+            from pathlib import Path
+            import subprocess
+
+            receptor = Path("{input.receptor}")
+            top_candidates = Path("{input.top_candidates}")
+            ligands_dir = Path("{params.ligands_dir}")
+            vina_dir = Path("{output.vina_dir}")
+            vina_logs = Path("{output.vina_logs}")
+
+            center_x = "{params.center_x}"
+            center_y = "{params.center_y}"
+            center_z = "{params.center_z}"
+            size_x = "{params.size_x}"
+            size_y = "{params.size_y}"
+            size_z = "{params.size_z}"
+
+            with top_candidates.open(newline="", encoding="utf-8") as handle:
+                reader = csv.DictReader(handle)
+                for row in reader:
+                    ligand_id = row.get("ligand_id") or row.get("ligand") or ""
+                    ligand_id = ligand_id.strip()
+                    if not ligand_id:
+                        continue
+                    ligand_path = ligands_dir / f"{ligand_id}.pdbqt"
+                    if not ligand_path.exists():
+                        continue
+                    out_path = vina_dir / f"{ligand_id}_vina_out.pdbqt"
+                    log_path = vina_logs / f"{ligand_id}.log"
+                    cmd = [
+                        "vina",
+                        "--receptor",
+                        str(receptor),
+                        "--ligand",
+                        str(ligand_path),
+                        "--center_x",
+                        center_x,
+                        "--center_y",
+                        center_y,
+                        "--center_z",
+                        center_z,
+                        "--size_x",
+                        size_x,
+                        "--size_y",
+                        size_y,
+                        "--size_z",
+                        size_z,
+                        "--out",
+                        str(out_path),
+                        "--log",
+                        str(log_path),
+                    ]
+                    subprocess.run(cmd, check=True)
+            PY
+            """
+        )
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
 
 rule parse_smina_results:
