@@ -47,7 +47,7 @@ rule fetch_clean_pdb:
 
 if not USE_MMSEQS:
     rule run_blast:
-        conda: "envs/mmseqs.yaml" # Asumo que usas el mismo env o uno con biopython
+        conda: "../environment.yaml"  # Biopython (BLAST remoto) vive en el env principal
         input: fasta="results/module1/target.fasta"
         output:
             xml="results/module1/blast_results.xml",
