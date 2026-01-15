@@ -53,6 +53,10 @@ if not USE_MMSEQS:
             xml="results/module1/blast_results.xml",
             fasta_homologs=config["evolution"]["unaligned_homologs"]
         params:
+            n_hits=config["evolution"]["n_homologs"],
+            e_val=config["evolution"]["e_value"],
+            db=config["evolution"].get("blast_db", "nr")
+        script: 'scripts/module1_run_blast.py'
             n_hits=2000,
             e_val=0.001,
             db="nr"

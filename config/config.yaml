@@ -10,6 +10,7 @@ structure:
 evolution:
   n_homologs: 2000
   e_value: 0.001
+  blast_db: nr
   use_mmseqs: false
   msa_file: results/module1/alignment.fasta
   msa_qc_report: results/module1/msa_qc_report.csv
