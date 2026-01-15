@@ -16,6 +16,7 @@ rule all:
         "results/module2/preparation_done.flag",
         expand("results/module3/docking/{ligand}_out.pdbqt", ligand=LIGANDS_PDBQT),
         expand("results/module3/docking/{ligand}_score.log", ligand=LIGANDS_PDBQT)
+        directory("results/module3/ligands_pdbqt")
 
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
 
@@ -311,3 +312,13 @@ rule run_smina:
             --out {output.docked} \
             --log {output.log}
         """
+# --- MÓDULO 3: EXPORTACIÓN PDBQT ---
+
+rule export_ligands_pdbqt_module3:
+    conda:
+        "envs/openbabel.yaml"
+    input:
+        sdf_dir="results/module2/ligands_3d"
+    output:
+        pdbqt_dir=directory("results/module3/ligands_pdbqt")
+    script: 'scripts/module3_export_pdbqt.py'
