@@ -15,6 +15,10 @@ rule all:
         "results/module2/qc_report.csv",
         "results/module2/preparation_done.flag",
         expand("results/module3/docking/{ligand}_out.pdbqt", ligand=LIGANDS_PDBQT),
+        expand("results/module3/docking/{ligand}_score.log", ligand=LIGANDS_PDBQT),
+        "results/module3/docking_scores.csv",
+        "results/module3/top_candidates.csv",
+        "results/module3/top_candidates.smi",
         expand("results/module3/logs/{ligand}.log", ligand=LIGANDS_PDBQT),
         directory("results/module3/ligands_pdbqt")
 
@@ -313,6 +317,28 @@ rule run_smina:
             --out {output.docked} \
             --log {output.log}
         """
+
+rule parse_smina_results:
+    conda:
+        "../environment.yaml"
+    input:
+        logs_dir="results/module3/docking"
+    output:
+        scores="results/module3/docking_scores.csv"
+    script: "scripts/module3_parse_smina_results.py"
+
+rule select_top_candidates:
+    conda:
+        "../environment.yaml"
+    input:
+        scores="results/module3/docking_scores.csv",
+        library="results/module2/library_enumerated.smi"
+    output:
+        csv="results/module3/top_candidates.csv",
+        smi="results/module3/top_candidates.smi"
+    params:
+        top_percent=config["docking"].get("top_candidates_percent", 5)
+    script: "scripts/module3_select_top_candidates.py"
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
 
 rule export_ligands_pdbqt_module3:

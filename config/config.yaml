@@ -46,3 +46,4 @@ docking:
   size_y: 22
   size_z: 22
   gridbox_center: results/module1/gridbox_center.txt
+  top_candidates_percent: 5
