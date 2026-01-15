@@ -12,7 +12,8 @@ rule all:
         "results/module1/target_prepared.pdbqt",
         "results/module1/view_scene.cxc",
         "results/module2/qc_report.csv",
-        "results/module2/preparation_done.flag"
+        "results/module2/preparation_done.flag",
+        directory("results/module3/ligands_pdbqt")
 
 # --- MÓDULO 1: INTELIGENCIA BIOLÓGICA ---
 
@@ -276,3 +277,14 @@ rule export_ligands_pdbqt:
     output:
         pdbqt_dir=directory("results/module2/ligands_pdbqt")
     script: 'scripts/module2_export_pdbqt.py'
+
+# --- MÓDULO 3: EXPORTACIÓN PDBQT ---
+
+rule export_ligands_pdbqt_module3:
+    conda:
+        "envs/openbabel.yaml"
+    input:
+        sdf_dir="results/module2/ligands_3d"
+    output:
+        pdbqt_dir=directory("results/module3/ligands_pdbqt")
+    script: 'scripts/module3_export_pdbqt.py'
