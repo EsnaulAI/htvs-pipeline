@@ -32,7 +32,7 @@ rule all:
         "results/module3/vina_logs",
         expand("results/module3/logs/{ligand}.log", ligand=LIGANDS),
         "results/module3/docking_scores.csv",
-        expand("results/module3/ligands_pdbqt/{ligand}.pdbqt", ligand=LIGANDS)
+        directory("results/module3/ligands_pdbqt")
 
 # =========================================
 # MÓDULO 1: INTELIGENCIA BIOLÓGICA
@@ -248,6 +248,14 @@ rule convert_sdf_to_pdbqt:
     output: "results/module3/ligands_pdbqt/{ligand}.pdbqt"
     shell:
         "obabel {input.sdf} -O {output} --partialcharge gasteiger"
+
+rule ensure_ligands_pdbqt_dir:
+    input:
+        expand("results/module3/ligands_pdbqt/{ligand}.pdbqt", ligand=LIGANDS)
+    output:
+        directory("results/module3/ligands_pdbqt")
+    shell:
+        "mkdir -p {output}"
 
 rule run_smina:
     conda: "envs/gnina.yaml" # Smina suele venir con Gnina, o usa env propio
