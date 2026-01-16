@@ -23,6 +23,7 @@ if "snakemake" not in globals():
 import os
 import re
 import subprocess
+from pathlib import Path
 from typing import Optional, Tuple
 
 import pandas as pd
@@ -110,7 +111,9 @@ def main():
     output_csv = snakemake.output.scores
     pose_dir = getattr(snakemake.params, "pose_dir", "results/module3/docking")
     gnina_wrapper = getattr(
-        snakemake.params, "gnina_wrapper", "scripts/gnina_container_wrapper.sh"
+        snakemake.params,
+        "gnina_wrapper",
+        str(Path(__file__).resolve().parent / "gnina_container_wrapper.sh"),
     )
 
     require_file(receptor, "receptor preparado")
