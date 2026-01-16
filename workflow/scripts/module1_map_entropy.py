@@ -14,7 +14,8 @@ if "snakemake" not in globals():
 # ----------------------------------------------------
 import json
 import math
-from Bio import AlignIO, pairwise2
+from Bio import AlignIO
+from Bio.Align import PairwiseAligner
 from Bio.PDB import PDBParser, PDBIO
 from Bio.PDB.Polypeptide import is_aa
 from Bio.SeqUtils import seq1
@@ -32,6 +33,39 @@ def extract_chain_sequence(structure, chain_id=None):
     return residues, sequence, chain.id
 
 
+def build_gapped_sequences(alignment, gap_char="-"):
+    target = alignment.target
+    query = alignment.query
+    target_aligned = []
+    query_aligned = []
+    target_pos = 0
+    query_pos = 0
+
+    for (t_start, t_end), (q_start, q_end) in zip(
+        alignment.aligned[0], alignment.aligned[1]
+    ):
+        if t_start > target_pos:
+            target_aligned.append(target[target_pos:t_start])
+            query_aligned.append(gap_char * (t_start - target_pos))
+        if q_start > query_pos:
+            target_aligned.append(gap_char * (q_start - query_pos))
+            query_aligned.append(query[query_pos:q_start])
+
+        target_aligned.append(target[t_start:t_end])
+        query_aligned.append(query[q_start:q_end])
+        target_pos = t_end
+        query_pos = q_end
+
+    if target_pos < len(target):
+        target_aligned.append(target[target_pos:])
+        query_aligned.append(gap_char * (len(target) - target_pos))
+    if query_pos < len(query):
+        target_aligned.append(gap_char * (len(query) - query_pos))
+        query_aligned.append(query[query_pos:])
+
+    return "".join(target_aligned), "".join(query_aligned)
+
+
 def map_pdb_to_msa(alignment, structure, chain_id=None, gap_char="-"):
     """Mapea residuos del PDB (numeración PDB) a columnas del MSA (0-based)."""
     target_msa_seq = str(alignment[0].seq)
@@ -45,10 +79,16 @@ def map_pdb_to_msa(alignment, structure, chain_id=None, gap_char="-"):
     if not pdb_seq or not target_no_gap:
         return {}, residues, chain_id_used
 
-    alignments = pairwise2.align.globalms(pdb_seq, target_no_gap, 1, -1, -10, -0.5)
+    aligner = PairwiseAligner()
+    aligner.mode = "global"
+    aligner.match_score = 1
+    aligner.mismatch_score = -1
+    aligner.open_gap_score = -10
+    aligner.extend_gap_score = -0.5
+    alignments = aligner.align(pdb_seq, target_no_gap)
     if not alignments:
         return {}, residues, chain_id_used
-    aligned_pdb, aligned_target, *_ = alignments[0]
+    aligned_pdb, aligned_target = build_gapped_sequences(alignments[0], gap_char=gap_char)
 
     mapping = {}
     pdb_idx = 0
