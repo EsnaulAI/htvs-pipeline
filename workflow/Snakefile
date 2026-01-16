@@ -1,6 +1,7 @@
 configfile: 'config/config.yaml'
 
 # --- LÓGICA PRELIMINAR ---
+# Usar MMseqs2 local solo si se solicita explícitamente en config.
 USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
 HOMOLOGS_OUTPUT = config["evolution"]["unaligned_homologs"]
 
@@ -56,9 +57,18 @@ rule fetch_clean_pdb:
         chain=config["structure"]["chain_id"]
     script: 'scripts/module1_prep_structure.py'
 
-if not USE_MMSEQS:
+if USE_MMSEQS:
+    rule run_mmseqs:
+        conda: "envs/mmseqs.yaml"
+        input: fasta="results/module1/target.fasta"
+        output:
+            fasta_homologs=config["evolution"]["unaligned_homologs"],
+            method_log="results/module1/homolog_method.log"
+        threads: 4
+        script: 'scripts/module1_run_mmseqs.py'
+else:
     rule run_blast:
-        conda: "../environment.yaml"  # Biopython (BLAST remoto) vive en el env principal
+        conda: "../environment.yaml"  # Biopython/requests para BLAST remoto
         input: fasta="results/module1/target.fasta"
         output:
             xml="results/module1/blast_results.xml",
