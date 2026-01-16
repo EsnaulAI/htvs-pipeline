@@ -89,7 +89,10 @@ def main():
         )
     else:
         input_items = list(snakemake.input)
-    log_paths = collect_log_files(input_items)
+    if logs_dir is not None:
+        log_paths = sorted({str(path) for path in input_items})
+    else:
+        log_paths = collect_log_files(input_items)
     pose_dir = getattr(snakemake.params, "pose_dir", "results/module3/docking")
 
     if not log_paths:

@@ -298,7 +298,7 @@ rule run_smina:
 rule parse_smina_results:
     conda: "../environment.yaml"
     input:
-        logs_dir="results/module3/logs"
+        logs_dir=directory("results/module3/logs")
     output: scores="results/module3/docking_scores.csv"
     script: "workflow/scripts/module3_parse_smina_results.py"
 
