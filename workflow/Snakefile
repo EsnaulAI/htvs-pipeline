@@ -237,6 +237,13 @@ rule prepare_ligands_3d:
 # MÓDULO 3: DOCKING (HTVS)
 # =========================================
 
+# Paso inicial: Crear directorio de logs de Smina
+rule init_module3_logs:
+    output:
+        logs_dir=directory("results/module3/logs")
+    shell:
+        "mkdir -p {output.logs_dir}"
+
 # Paso intermedio: Convertir SDFs (del Modulo 2) a PDBQTs (para Smina)
 rule convert_sdf_to_pdbqt:
     conda: "envs/openbabel.yaml"
@@ -274,7 +281,7 @@ rule run_smina:
 rule parse_smina_results:
     conda: "../environment.yaml"
     input:
-        logs_dir="results/module3/logs"
+        logs_dir=directory("results/module3/logs")
     output: scores="results/module3/docking_scores.csv"
     script: "workflow/scripts/module3_parse_smina_results.py"
 
