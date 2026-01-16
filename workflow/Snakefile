@@ -335,7 +335,7 @@ rule build_consensus_final:
         size_x=config["docking"]["size_x"],
         size_y=config["docking"]["size_y"],
         size_z=config["docking"]["size_z"]
-    script: "workflow/scripts/module3_build_consensus.py"
+    script: "workflow/scripts/module3_run_vina.py"
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
 
 rule export_ligands_pdbqt_module3:
