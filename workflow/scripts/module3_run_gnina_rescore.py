@@ -78,7 +78,10 @@ def run_gnina(
     ligand_path: str,
     gnina_wrapper: Optional[Union[str, Path]],
 ) -> Tuple[Optional[float], Optional[float]]:
-    command = build_gnina_command(receptor, ligand_path, gnina_wrapper)
+    command = [
+        str(part)
+        for part in build_gnina_command(receptor, ligand_path, gnina_wrapper)
+    ]
     result = subprocess.run(
         command,
         check=False,
