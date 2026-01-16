@@ -31,9 +31,9 @@ def has_atoms(pdbqt_path: str) -> bool:
     return False
 
 
-def convert_sdf_to_pdbqt(sdf_path, out_dir):
-
 def has_pdbqt_atoms(pdbqt_path):
+    if not os.path.isfile(pdbqt_path):
+        return False
     with open(pdbqt_path, "r", encoding="utf-8", errors="ignore") as handle:
         return any(
             line.startswith("ATOM") or line.startswith("HETATM")
