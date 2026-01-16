@@ -24,6 +24,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
+from typing import Optional, Tuple
 from typing import Optional, Tuple, Union
 
 import pandas as pd
@@ -117,6 +118,8 @@ def main():
     top_candidates_path = snakemake.input.top_candidates
     output_csv = snakemake.output.scores
     pose_dir = getattr(snakemake.params, "pose_dir", "results/module3/docking")
+    default_wrapper = Path(__file__).resolve().parent / "gnina_container_wrapper.sh"
+    gnina_wrapper = getattr(snakemake.params, "gnina_wrapper", str(default_wrapper))
     gnina_wrapper = getattr(
         snakemake.params,
         "gnina_wrapper",

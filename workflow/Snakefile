@@ -254,7 +254,9 @@ rule prepare_ligands_3d:
 
 
 checkpoint generate_ligands_list:
-    input: flag="results/module2/preparation_done.flag"
+    input:
+        flag="results/module2/preparation_done.flag",
+        pdbqt_dir="results/module3/ligands_pdbqt"
     output: list="results/module2/ligands_list.txt"
     run:
         import glob
@@ -263,6 +265,7 @@ checkpoint generate_ligands_list:
         pdbqt_paths = sorted(glob.glob("results/module3/ligands_pdbqt/*.pdbqt"))
         ligands = [
             os.path.splitext(os.path.basename(path))[0]
+            for path in sorted(glob.glob("results/module3/ligands_pdbqt/*.pdbqt"))
             for path in pdbqt_paths
         ]
         invalid_path = "invalid_ligands.txt"
@@ -388,6 +391,8 @@ rule run_gnina_rescore:
     output:
         scores="results/module3/gnina_scores.csv"
     params:
+        pose_dir="results/module3/docking"
+    script: "scripts/module3_run_gnina_rescore.py"
         pose_dir="results/module3/docking",
         gnina_wrapper="scripts/gnina_container_wrapper.sh"
     script: 'scripts/module3_run_gnina_rescore.py'

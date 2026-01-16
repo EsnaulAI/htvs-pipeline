@@ -21,6 +21,17 @@ from logging_utils import (
 
 INVALID_LIGANDS_LOG = os.path.join("results", "module3", "invalid_ligands.txt")
 
+def has_atoms(pdbqt_path: str) -> bool:
+    if not os.path.isfile(pdbqt_path):
+        return False
+    with open(pdbqt_path, "r", encoding="utf-8", errors="ignore") as handle:
+        for line in handle:
+            if line.startswith(("ATOM", "HETATM")):
+                return True
+    return False
+
+
+def convert_sdf_to_pdbqt(sdf_path, out_dir):
 
 def has_pdbqt_atoms(pdbqt_path):
     with open(pdbqt_path, "r", encoding="utf-8", errors="ignore") as handle:
@@ -74,6 +85,15 @@ def convert_sdf_to_pdbqt(sdf_path, out_dir, invalid_log_path):
                 stderr=result.stderr.strip() or "sin salida de error",
             )
         )
+        return False
+    if not has_atoms(out_path):
+        log_warn(f"PDBQT vacío o sin átomos: {out_path}")
+        try:
+            os.remove(out_path)
+        except FileNotFoundError:
+            pass
+        return False
+    return True
         return False, None
     if not os.path.isfile(out_path) or os.path.getsize(out_path) == 0:
         log_warn(f"PDBQT vacío o inexistente: {out_path}")
