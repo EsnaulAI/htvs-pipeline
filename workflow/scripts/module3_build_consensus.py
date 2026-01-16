@@ -5,19 +5,33 @@ import pandas as pd
 
 gnina_file = snakemake.input.gnina
 top_candidates_file = snakemake.input.top
+final_hits_file = getattr(snakemake.input, "final_hits", None)
 output_consensus = snakemake.output.consensus
 output_report = snakemake.output.report
 
-print("📊 Generando Consenso Final (Smina + Gnina)...")
+print("📊 Generando Consenso Final (Gnina + filtro de contactos)...")
 
 try:
     df_gnina = pd.read_csv(gnina_file)
     df_top = pd.read_csv(top_candidates_file)
+    df_hits = None
+    if final_hits_file and os.path.exists(final_hits_file):
+        df_hits = pd.read_csv(final_hits_file)
 
-    if "Ligand" in df_gnina.columns and "ID" in df_top.columns:
-        df_final = pd.merge(df_gnina, df_top, left_on="Ligand", right_on="ID", how="inner")
+    if df_hits is not None and not df_hits.empty:
+        if "Ligand" in df_hits.columns and "Ligand" in df_gnina.columns:
+            df_base = df_gnina[df_gnina["Ligand"].isin(df_hits["Ligand"])]
+        else:
+            df_base = df_hits
     else:
-        df_final = df_gnina
+        df_base = df_gnina
+
+    if "Ligand" in df_base.columns and "ID" in df_top.columns:
+        df_final = pd.merge(df_base, df_top, left_on="Ligand", right_on="ID", how="inner")
+    elif "ID" in df_base.columns and "ID" in df_top.columns:
+        df_final = pd.merge(df_base, df_top, on="ID", how="inner")
+    else:
+        df_final = df_base
 
     if "CNNaffinity" in df_final.columns:
         df_final = df_final.sort_values(by="CNNaffinity", ascending=False)
