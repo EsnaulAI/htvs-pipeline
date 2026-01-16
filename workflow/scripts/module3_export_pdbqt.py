@@ -19,6 +19,8 @@ from logging_utils import (
     log_warn,
 )
 
+INVALID_LIGANDS_LOG = os.path.join("results", "module3", "invalid_ligands.txt")
+
 
 def convert_sdf_to_pdbqt(sdf_path, out_dir):
     name = os.path.splitext(os.path.basename(sdf_path))[0]
@@ -49,23 +51,49 @@ def convert_sdf_to_pdbqt(sdf_path, out_dir):
     return True
 
 
+def pdbqt_has_atoms(pdbqt_path):
+    with open(pdbqt_path, "r", encoding="utf-8") as pdbqt_file:
+        for line in pdbqt_file:
+            if line.startswith("ATOM") or line.startswith("HETATM"):
+                return True
+    return False
+
+
 def main():
     sdf_dir = snakemake.input.sdf_dir
     out_dir = snakemake.output.pdbqt_dir
 
     os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(INVALID_LIGANDS_LOG), exist_ok=True)
 
     sdf_files = sorted(glob.glob(os.path.join(sdf_dir, "*.sdf")))
     if not sdf_files:
         log_warn(f"No se encontraron ligandos SDF en {sdf_dir}.")
 
     converted = 0
+    valid = 0
+    invalid = 0
     for sdf_path in sdf_files:
-        if convert_sdf_to_pdbqt(sdf_path, out_dir):
+        converted_ok = convert_sdf_to_pdbqt(sdf_path, out_dir)
+        if converted_ok:
             converted += 1
+            name = os.path.splitext(os.path.basename(sdf_path))[0]
+            safe_name = "".join([c for c in name if c.isalnum() or c in ("_", "-")])
+            if not safe_name:
+                safe_name = name
+            out_path = os.path.join(out_dir, f"{safe_name}.pdbqt")
+            if not pdbqt_has_atoms(out_path):
+                os.remove(out_path)
+                with open(INVALID_LIGANDS_LOG, "a", encoding="utf-8") as log_file:
+                    log_file.write(f"{safe_name}\n")
+                log_warn(f"PDBQT sin átomos, eliminado: {out_path}")
+                invalid += 1
+            else:
+                valid += 1
 
     confirm_path(out_dir, "directorio de salida PDBQT")
     log_info(f"✅ Exportación completada: {converted} ligandos en {out_dir}")
+    log_info(f"Resumen: válidos={valid}, inválidos={invalid}")
 
 
 if __name__ == "__main__":
