@@ -31,6 +31,19 @@
 | ChEMBL API | N/A (servicio externo) | Minería de fármacos en ChEMBL. |
 
 > Nota: Para herramientas sin pin explícito en los YAML, se recomienda registrar la versión efectiva con `tool --version` en el entorno de ejecución.
+
+## Paquetes con instalación alternativa
+
+Algunas herramientas no tienen paquetes conda confiables o requieren entornos cerrados. Se documentan opciones válidas para mantener portabilidad.
+
+### Gnina (docking con redes neuronales)
+
+Opciones recomendadas:
+
+- **Docker/Singularity**: usar las imágenes oficiales de Gnina para evitar dependencias del sistema. En entornos HPC sin Docker, convertir la imagen a Singularity/Apptainer y ejecutar desde allí.
+- **Build manual**: compilar desde el código fuente si se requiere integración nativa (CUDA/driver específico o sin acceso a contenedores). Seguir el README oficial para dependencias (CMake, CUDA, Boost, OpenCL) y verificar la versión con `gnina --version`.
+
+> Recomendación: registrar el método usado (contenedor vs build manual) y la versión exacta para reproducibilidad.
 # Dependencias mínimas
 
 Estas son las versiones mínimas recomendadas para ejecutar el pipeline.
@@ -52,4 +65,3 @@ Estas son las versiones mínimas recomendadas para ejecutar el pipeline.
 - Open Babel >= 3.1.1
 - MMseqs2 >= 14.7e284
 - PyDCA >= 1.0.0
-
