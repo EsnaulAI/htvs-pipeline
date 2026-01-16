@@ -24,6 +24,13 @@ Para ejecutar reglas con ambientes por regla:
 snakemake --use-conda --cores 4
 ```
 
+Antes de ejecutar el pipeline, exporta el backend de Matplotlib para evitar
+errores tipo `qt.qpa.plugin: Could not find`:
+
+```bash
+export MPLBACKEND=Agg
+```
+
 Si prefieres instalar manualmente herramientas externas, usa los entornos en
 `workflow/envs/*.yaml` como plantillas reproducibles.
 
