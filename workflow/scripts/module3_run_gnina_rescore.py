@@ -55,15 +55,25 @@ def parse_gnina_output(text: str) -> Tuple[Optional[float], Optional[float]]:
     return affinity, cnn_score
 
 
-def run_gnina(receptor: str, ligand_path: str) -> Tuple[Optional[float], Optional[float]]:
-    command = [
-        "gnina",
+def build_gnina_command(
+    receptor: str, ligand_path: str, gnina_wrapper: Optional[str]
+) -> list[str]:
+    base_command = [
         "--receptor",
         receptor,
         "--ligand",
         ligand_path,
         "--score_only",
     ]
+    if gnina_wrapper:
+        return [gnina_wrapper, *base_command]
+    return ["gnina", *base_command]
+
+
+def run_gnina(
+    receptor: str, ligand_path: str, gnina_wrapper: Optional[str]
+) -> Tuple[Optional[float], Optional[float]]:
+    command = build_gnina_command(receptor, ligand_path, gnina_wrapper)
     result = subprocess.run(
         command,
         check=False,
@@ -99,6 +109,9 @@ def main():
     top_candidates_path = snakemake.input.top_candidates
     output_csv = snakemake.output.scores
     pose_dir = getattr(snakemake.params, "pose_dir", "results/module3/docking")
+    gnina_wrapper = getattr(
+        snakemake.params, "gnina_wrapper", "workflow/scripts/gnina_container_wrapper.sh"
+    )
 
     require_file(receptor, "receptor preparado")
     require_file(top_candidates_path, "candidatos top")
@@ -120,7 +133,7 @@ def main():
         if not os.path.isfile(pose_path):
             log_warn(f"⚠️ Pose no encontrada para {ligand_id}: {pose_path}")
             continue
-        vina_score, cnn_score = run_gnina(receptor, pose_path)
+        vina_score, cnn_score = run_gnina(receptor, pose_path, gnina_wrapper)
         records.append(
             {
                 "ligand_id": ligand_id,
