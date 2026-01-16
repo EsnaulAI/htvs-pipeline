@@ -21,6 +21,8 @@ def fetch_all_molecules(base_url, params):
             next_url = urljoin(base_url, next_link)
             if urlparse(next_link).query:
                 next_params = None
+            else:
+                next_params = params.copy()
             continue
 
         total_count = page_meta.get('total_count')
