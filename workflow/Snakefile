@@ -61,7 +61,8 @@ if not USE_MMSEQS:
         input: fasta="results/module1/target.fasta"
         output:
             xml="results/module1/blast_results.xml",
-            fasta_homologs=config["evolution"]["unaligned_homologs"]
+            fasta_homologs=config["evolution"]["unaligned_homologs"],
+            method_log="results/module1/homolog_method.log"
         params:
             n_hits=config["evolution"]["n_homologs"],
             e_val=config["evolution"]["e_value"],
