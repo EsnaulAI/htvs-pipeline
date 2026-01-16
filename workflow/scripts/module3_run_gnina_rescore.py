@@ -24,7 +24,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import pandas as pd
 
@@ -57,22 +57,26 @@ def parse_gnina_output(text: str) -> Tuple[Optional[float], Optional[float]]:
 
 
 def build_gnina_command(
-    receptor: str, ligand_path: str, gnina_wrapper: Optional[str]
+    receptor: str,
+    ligand_path: str,
+    gnina_wrapper: Optional[Union[str, Path]],
 ) -> list[str]:
     base_command = [
         "--receptor",
-        receptor,
+        str(receptor),
         "--ligand",
-        ligand_path,
+        str(ligand_path),
         "--score_only",
     ]
     if gnina_wrapper:
-        return [gnina_wrapper, *base_command]
+        return [str(gnina_wrapper), *base_command]
     return ["gnina", *base_command]
 
 
 def run_gnina(
-    receptor: str, ligand_path: str, gnina_wrapper: Optional[str]
+    receptor: str,
+    ligand_path: str,
+    gnina_wrapper: Optional[Union[str, Path]],
 ) -> Tuple[Optional[float], Optional[float]]:
     command = build_gnina_command(receptor, ligand_path, gnina_wrapper)
     result = subprocess.run(
@@ -113,7 +117,7 @@ def main():
     gnina_wrapper = getattr(
         snakemake.params,
         "gnina_wrapper",
-        str(Path(__file__).resolve().parent / "gnina_container_wrapper.sh"),
+        Path(__file__).resolve().parent / "gnina_container_wrapper.sh",
     )
 
     require_file(receptor, "receptor preparado")
