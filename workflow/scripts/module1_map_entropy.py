@@ -86,9 +86,10 @@ def map_pdb_to_msa(alignment, structure, chain_id=None, gap_char="-"):
     aligner.open_gap_score = -10
     aligner.extend_gap_score = -0.5
     alignments = aligner.align(pdb_seq, target_no_gap)
-    if not alignments:
+    alignment = next(iter(alignments), None)
+    if alignment is None:
         return {}, residues, chain_id_used
-    aligned_pdb, aligned_target = build_gapped_sequences(alignments[0], gap_char=gap_char)
+    aligned_pdb, aligned_target = build_gapped_sequences(alignment, gap_char=gap_char)
 
     mapping = {}
     pdb_idx = 0
