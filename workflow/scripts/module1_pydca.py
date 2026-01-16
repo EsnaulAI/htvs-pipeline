@@ -36,6 +36,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 from pathlib import Path
+import json
 import yaml
 
 def load_config():
@@ -61,20 +62,21 @@ ensure_parent_dir(output_plot)
 ensure_parent_dir(output_report)
 
 with open(map_file, "r", encoding="utf-8") as handle:
-    map_payload = yaml.safe_load(handle)
+    map_payload = json.load(handle)
 mapping = {int(k): v for k, v in map_payload.get("mapping", {}).items()}
 index_base = map_payload.get("index_base", 0)
 chain_id_used = map_payload.get("chain_id")
 if target_res_pdb not in mapping:
-    log_warn(
-        "⚠️ Advertencia: no hay correspondencia para el residuo objetivo "
-        f"{target_res_pdb} en la cadena {chain_id_used}. "
-        "Es posible que esté ausente por gaps en el MSA."
+    log_error(
+        "❌ Error: el residuo objetivo "
+        f"{target_res_pdb} en la cadena {chain_id_used} no está mapeado. "
+        "Revisa el mapa PDB→MSA o la presencia de gaps en el MSA."
     )
     sys.exit(1)
 
 target_res_msa = mapping[target_res_pdb] - index_base
 target_res_msa_pos = target_res_msa + 1
+log_info(f"Índice base del mapa PDB→MSA: {index_base} (0-based o 1-based).")
 
 log_info("🧠 Iniciando PyDCA (Direct Coupling Analysis) - Campo Medio...")
 

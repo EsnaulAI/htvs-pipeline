@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
 from collections import Counter
+import json
 
 import matplotlib
 
@@ -10,7 +11,14 @@ import numpy as np
 import yaml
 from Bio import AlignIO
 
-from logging_utils import confirm_file, ensure_parent_dir, log_info, log_warn, require_file
+from logging_utils import (
+    confirm_file,
+    ensure_parent_dir,
+    log_error,
+    log_info,
+    log_warn,
+    require_file,
+)
 
 
 def load_config():
@@ -21,7 +29,7 @@ def load_config():
 
 def load_pdb_msa_map(map_path):
     with open(map_path, "r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
+        data = json.load(handle)
     mapping = {int(k): v for k, v in data.get("mapping", {}).items()}
     return mapping, data.get("chain_id"), data.get("index_base", 0)
 
@@ -77,10 +85,10 @@ aln_len = alignment.get_alignment_length()
 
 mapping, chain_id_used, index_base = load_pdb_msa_map(map_file)
 if target_residue not in mapping:
-    log_warn(
-        "⚠️ Advertencia: no hay correspondencia para el residuo objetivo "
-        f"{target_residue} en la cadena {chain_id_used}. "
-        "Es posible que esté ausente por gaps en el MSA."
+    log_error(
+        "❌ Error: el residuo objetivo "
+        f"{target_residue} en la cadena {chain_id_used} no está mapeado. "
+        "Revisa el mapa PDB→MSA o la presencia de gaps en el MSA."
     )
     sys.exit(1)
 
@@ -89,6 +97,7 @@ log_info(
     "Residuo objetivo PDB "
     f"{target_residue} -> columna MSA {target_res_index + 1}."
 )
+log_info(f"Índice base del mapa PDB→MSA: {index_base} (0-based o 1-based).")
 
 aa_map = {aa: i for i, aa in enumerate("ACDEFGHIKLMNPQRSTVWY-")}
 msa_matrix = np.zeros((num_seqs, aln_len), dtype=int)
