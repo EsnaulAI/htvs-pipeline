@@ -339,6 +339,17 @@ rule build_consensus_final:
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
 
 rule export_ligands_pdbqt_module3:
+    conda: "envs/openbabel.yaml"
+    input:
+        flag="results/module2/preparation_done.flag",
+        sdf_dir=config["chemistry"]["prepared_dir"]
+    output:
+        pdbqt_dir=directory("results/module3/ligands_pdbqt")
+    script: "workflow/scripts/module3_export_pdbqt.py"
+
+# --- REGLA FINAL DE REPORTE ---
+
+rule build_consensus_report:
     conda:
         "envs/openbabel.yaml"
     input:
