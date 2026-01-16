@@ -305,40 +305,6 @@ rule run_smina:
         sy=config["docking"]["size_y"],
         sz=config["docking"]["size_z"]
     script: "scripts/module3_run_smina.py"
-    run:
-        import os
-        from pathlib import Path
-
-        from snakemake.logging import logger
-        from snakemake.shell import shell
-
-        def has_atoms(pdbqt_path):
-            with open(pdbqt_path, "r") as handle:
-                for line in handle:
-                    if line.startswith(("ATOM", "HETATM")):
-                        return True
-            return False
-
-        os.makedirs("results/module3/docking", exist_ok=True)
-        os.makedirs("results/module3/logs", exist_ok=True)
-
-        if not has_atoms(input.ligand):
-            warning = (
-                f"Ligand file {input.ligand} has no ATOM/HETATM records; "
-                "skipping smina and writing empty outputs."
-            )
-            logger.warning(warning)
-            Path(output.docked).write_text("")
-            Path(output.log).write_text(f"{warning}\n")
-        else:
-            shell(
-                """
-                smina --receptor {input.receptor} --ligand {input.ligand} \
-                      --center_x {params.cx} --center_y {params.cy} --center_z {params.cz} \
-                      --size_x {params.sx} --size_y {params.sy} --size_z {params.sz} \
-                      --out {output.docked} --log {output.log} --cpu 1
-                """
-            )
 
 rule parse_smina_results:
     conda: "../environment.yaml"
@@ -404,7 +370,7 @@ rule contact_filter_hits:
 
 # --- REGLA FINAL DE REPORTE ---
 rule build_consensus_final:
-    conda: "../environment.yaml"
+    conda: "envs/vina.yaml"
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
