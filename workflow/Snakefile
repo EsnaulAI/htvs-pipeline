@@ -280,7 +280,7 @@ rule convert_sdf_to_pdbqt:
         "obabel {input.sdf} -O {output} --partialcharge gasteiger"
 
 rule run_smina:
-    conda: "envs/gnina.yaml" # Smina suele venir con Gnina, o usa env propio
+    conda: "envs/gnina.yaml" # Smina en conda; Gnina se usa vía contenedor para rescoring
     input:
         receptor="results/module1/target_prepared.pdbqt",
         ligand="results/module3/ligands_pdbqt/{ligand}.pdbqt"
