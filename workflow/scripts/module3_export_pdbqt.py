@@ -75,7 +75,10 @@ def convert_sdf_to_pdbqt(sdf_path, out_dir, invalid_log_path):
         return False, None
     if not os.path.isfile(out_path) or os.path.getsize(out_path) == 0:
         log_warn(f"PDBQT vacío o inexistente: {out_path}")
-        return False, None
+        if os.path.isfile(out_path):
+            os.remove(out_path)
+        log_invalid_ligands({safe_name}, invalid_log_path)
+        return False, safe_name
     if not has_pdbqt_atoms(out_path):
         log_warn(f"PDBQT sin átomos para {safe_name}; eliminado.")
         os.remove(out_path)
