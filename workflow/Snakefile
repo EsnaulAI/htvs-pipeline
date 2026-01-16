@@ -3,9 +3,17 @@ configfile: 'config/config.yaml'
 # --- LÓGICA PRELIMINAR ---
 USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
 
-# Detectamos los ligandos basándonos en la salida del Módulo 2 (SDFs)
-# Esto asegura que Snakemake sepa qué trabajos de docking lanzar.
-LIGANDS = glob_wildcards("results/module2/ligands_3d/{ligand}.sdf").ligand
+def get_ligands_from_list():
+    list_path = checkpoints.generate_ligands_list.get().output.list
+    with open(list_path, "r") as handle:
+        return [line.strip() for line in handle if line.strip()]
+
+
+def get_ligands(wildcards):
+    return get_ligands_from_list()
+
+
+LIGANDS = get_ligands
 
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
@@ -17,6 +25,7 @@ rule all:
 
         # Módulo 2: Ligandos
         "results/module2/preparation_done.flag",
+        "results/module2/ligands_list.txt",
         "results/module2/qc_report.csv",
         "results/module2/library_dedup.smi",
         "results/module2/library_enumerated.smi",
@@ -231,6 +240,21 @@ rule prepare_ligands_3d:
     params: out_dir=config["chemistry"]["prepared_dir"]
     threads: 4
     script: 'workflow/scripts/module2_prep_3d.py'
+
+
+checkpoint generate_ligands_list:
+    input: flag="results/module2/preparation_done.flag"
+    output: list="results/module2/ligands_list.txt"
+    run:
+        import glob
+        import os
+
+        ligands = [
+            os.path.splitext(os.path.basename(path))[0]
+            for path in sorted(glob.glob("results/module2/ligands_3d/*.sdf"))
+        ]
+        with open(output.list, "w") as handle:
+            handle.write("\n".join(ligands))
 
 
 # =========================================
