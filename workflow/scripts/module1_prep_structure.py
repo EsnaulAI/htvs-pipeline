@@ -51,6 +51,47 @@ io = PDBIO()
 io.set_structure(structure)
 io.save(out_pdb, select=ChainSelect())
 
+def infer_element_from_atom_name(atom_name):
+    cleaned = atom_name.strip()
+    if not cleaned:
+        return ""
+    while cleaned and cleaned[0].isdigit():
+        cleaned = cleaned[1:]
+    if not cleaned:
+        return ""
+    first = cleaned[0].upper()
+    second = cleaned[1].lower() if len(cleaned) > 1 else ""
+    if second and second.islower():
+        return f"{first}{second}"
+    return first
+
+def fill_pdb_element_columns(pdb_path):
+    with open(pdb_path, "r") as f:
+        lines = f.readlines()
+
+    corrected = 0
+    updated_lines = []
+    for line in lines:
+        if line.startswith(("ATOM", "HETATM")):
+            element = line[76:78].strip()
+            if not element:
+                atom_name = line[12:16]
+                inferred = infer_element_from_atom_name(atom_name)
+                if inferred:
+                    corrected += 1
+                    line = f"{line[:76]}{inferred:>2}{line[78:]}"
+        updated_lines.append(line)
+
+    if corrected > 0:
+        log_info(
+            f"🧪 Se corrigieron {corrected} líneas ATOM/HETATM con elemento vacío en columnas 77-78."
+        )
+
+    with open(pdb_path, "w") as f:
+        f.writelines(updated_lines)
+
+fill_pdb_element_columns(out_pdb)
+
 # 3. Extraer Secuencia FASTA (FIX: Concatenar fragmentos)
 ppb = Polypeptide.PPBuilder()
 peptides = ppb.build_peptides(structure[0][chain_target])
