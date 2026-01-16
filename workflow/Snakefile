@@ -2,6 +2,7 @@ configfile: 'config/config.yaml'
 
 # --- LÓGICA PRELIMINAR ---
 USE_MMSEQS = config["evolution"].get("use_mmseqs", False)
+HOMOLOGS_OUTPUT = config["evolution"]["unaligned_homologs"]
 
 def get_ligands_from_list():
     list_path = checkpoints.generate_ligands_list.get().output.list
@@ -61,19 +62,20 @@ if not USE_MMSEQS:
         input: fasta="results/module1/target.fasta"
         output:
             xml="results/module1/blast_results.xml",
-            fasta_homologs=config["evolution"]["unaligned_homologs"],
+            fasta_homologs=HOMOLOGS_OUTPUT,
             method_log="results/module1/homolog_method.log"
         params:
             n_hits=config["evolution"]["n_homologs"],
             e_val=config["evolution"]["e_value"],
             db=config["evolution"].get("blast_db", "nr")
+        threads: 4
         script: 'scripts/module1_run_blast.py'
 else:
     rule run_mmseqs:
         conda: "envs/mmseqs.yaml"
         input: fasta="results/module1/target.fasta"
         output:
-            fasta_homologs=config["evolution"]["unaligned_homologs"],
+            fasta_homologs=HOMOLOGS_OUTPUT,
             method_log="results/module1/homolog_method.log"
         threads: 4
         script: 'scripts/module1_run_mmseqs.py'
@@ -81,7 +83,7 @@ else:
 rule parse_and_align:
     conda: "envs/mafft.yaml"
     input:
-        homologs=config["evolution"]["unaligned_homologs"],
+        homologs=HOMOLOGS_OUTPUT,
         original_fasta="results/module1/target.fasta"
     output: fasta_msa=config["evolution"]["msa_file"]
     threads: 4

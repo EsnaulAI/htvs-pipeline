@@ -25,7 +25,7 @@ from Bio.SeqRecord import SeqRecord
 import sys
 from pathlib import Path
 import yaml
-from module1_run_mmseqs import run_mmseqs_search
+import module1_run_mmseqs
 from logging_utils import (
     confirm_file,
     ensure_parent_dir,
@@ -125,9 +125,8 @@ try:
 except Exception as e:
     log_error(f"❌ Error conectando a BLAST: {e}")
     log_warn("↪️ Ejecutando MMseqs2 local como respaldo.")
-    config = load_config()
-    threads = getattr(snakemake, "threads", 4)
-    run_mmseqs_search(fasta_input, homologs_output, config, threads, method_log_path=method_log)
+    module1_run_mmseqs.snakemake = snakemake
+    module1_run_mmseqs.main()
     with open(xml_output, "w") as out_handle:
         out_handle.write(f"BLAST falló; se usó MMseqs2. Error: {e}\n")
     confirm_file(xml_output, "XML de resultados BLAST (fallback)")
