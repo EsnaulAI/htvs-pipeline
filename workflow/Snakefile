@@ -352,6 +352,7 @@ rule build_consensus_report:
         "envs/openbabel.yaml"
     input:
         gnina="results/module3/gnina_scores.csv",
+        final_hits="results/module3/final_hits.csv",
         top="results/module3/top_candidates.csv"
     output:
         consensus="results/module3/consensus_final.csv",
