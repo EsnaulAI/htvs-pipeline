@@ -19,7 +19,7 @@ if "snakemake" not in globals():
 
 import os
 import re
-import glob
+from pathlib import Path
 import pandas as pd
 
 from logging_utils import (
@@ -40,13 +40,13 @@ def collect_log_files(inputs):
 
     for item in items:
         if os.path.isdir(item):
-            patterns = ["*.log", "*.txt", "*.out"]
+            patterns = ("*.log", "*.txt", "*.out")
             matched = []
             for pattern in patterns:
-                matched.extend(glob.glob(os.path.join(item, pattern)))
+                matched.extend(Path(item).glob(pattern))
             if not matched:
                 matched = [
-                    os.path.join(item, name)
+                    Path(item) / name
                     for name in os.listdir(item)
                     if os.path.isfile(os.path.join(item, name))
                 ]
@@ -54,7 +54,7 @@ def collect_log_files(inputs):
         else:
             log_files.append(item)
 
-    return sorted({path for path in log_files if os.path.isfile(path)})
+    return sorted({str(path) for path in log_files if os.path.isfile(path)})
 
 
 def parse_best_affinity(log_path):
@@ -81,7 +81,12 @@ def main():
     if logs_input is not None:
         input_items = list(logs_input)
     elif logs_dir is not None:
-        input_items = [logs_dir]
+        logs_path = Path(logs_dir)
+        input_items = (
+            [str(path) for path in logs_path.glob("*.log") if path.is_file()]
+            if logs_path.exists()
+            else []
+        )
     else:
         input_items = list(snakemake.input)
     log_paths = collect_log_files(input_items)

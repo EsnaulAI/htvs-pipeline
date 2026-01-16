@@ -30,8 +30,7 @@ rule all:
         "results/final_report.txt",
         "results/module3/vina",
         "results/module3/vina_logs",
-        expand("results/module3/ligands_pdbqt/{ligand}.pdbqt", ligand=LIGANDS),
-        expand("results/module3/logs/{ligand}.log", ligand=LIGANDS)
+        expand("results/module3/ligands_pdbqt/{ligand}.pdbqt", ligand=LIGANDS)
 
 # =========================================
 # MÓDULO 1: INTELIGENCIA BIOLÓGICA
@@ -275,8 +274,7 @@ rule run_smina:
 rule parse_smina_results:
     conda: "../environment.yaml"
     input:
-        # Usamos expand para esperar a que TODOS los logs estén listos
-        logs=expand("results/module3/logs/{ligand}.log", ligand=LIGANDS)
+        logs_dir="results/module3/logs"
     output: scores="results/module3/docking_scores.csv"
     script: "workflow/scripts/module3_parse_smina_results.py"
 
