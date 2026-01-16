@@ -19,6 +19,9 @@ rule all:
         "results/module1/candidate_ranking.csv",
         "results/module1/view_scene.cxc",
         "results/module1/config_updated.flag",
+        "results/module1/pdb_to_msa_map.json",
+        "results/module1/msa_qc_report.csv",
+        "results/module1/coevolution_profile.png",
 
         # Módulo 2: Ligandos
         "results/module2/preparation_done.flag",
