@@ -196,6 +196,9 @@ if map_output:
         map_output,
         alignment.get_alignment_length(),
     )
+    log_info(
+        "🧾 Mapa PDB→MSA guardado con índice base 0 (columnas MSA 0-based)."
+    )
 
 log_info("🎨 Inyectando puntuaciones en el factor B del PDB...")
 unmapped = 0
