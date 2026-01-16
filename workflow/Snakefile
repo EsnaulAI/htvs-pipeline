@@ -384,7 +384,7 @@ rule run_gnina_rescore:
     params:
         pose_dir="results/module3/docking",
         gnina_wrapper="scripts/gnina_container_wrapper.sh"
-    script: "scripts/module3_run_gnina_rescore.py"
+    script: 'scripts/module3_run_gnina_rescore.py'
 
 rule contact_filter_hits:
     conda: "../environment.yaml"
