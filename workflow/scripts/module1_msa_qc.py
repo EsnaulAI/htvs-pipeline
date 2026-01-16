@@ -25,6 +25,7 @@ from logging_utils import (
     confirm_file,
     ensure_parent_dir,
     log_info,
+    log_error,
     log_warn,
     require_file,
 )
@@ -77,6 +78,8 @@ def calculate_mean_pairwise_identity(alignment):
 
 msa_file = snakemake.input.msa
 output_report = snakemake.output.report
+min_sequences = 50
+min_coverage = 0.6
 
 require_file(msa_file, "MSA de entrada")
 ensure_parent_dir(output_report)
@@ -94,10 +97,24 @@ if num_seqs == 0 or aln_len == 0:
         handle.write(f"num_seqs,{num_seqs}\n")
         handle.write(f"alignment_length,{aln_len}\n")
     confirm_file(output_report, "reporte QC MSA")
+    log_error(
+        f"El MSA no cumple con los mínimos requeridos (secuencias >= {min_sequences}, "
+        f"cobertura >= {min_coverage:.2f}). Se detectó num_seqs={num_seqs}, "
+        f"alignment_length={aln_len}."
+    )
+    raise SystemExit(1)
 else:
     avg_coverage = calculate_average_coverage(alignment)
     gap_percentages = calculate_gap_percentages(alignment)
     mean_identity = calculate_mean_pairwise_identity(alignment)
+
+    if num_seqs < min_sequences or avg_coverage < min_coverage:
+        log_error(
+            f"El MSA no cumple con los mínimos requeridos (secuencias >= {min_sequences}, "
+            f"cobertura >= {min_coverage:.2f}). Se detectó num_seqs={num_seqs}, "
+            f"average_coverage={avg_coverage:.4f}."
+        )
+        raise SystemExit(1)
 
     with open(output_report, "w") as handle:
         handle.write("metric,value\n")
