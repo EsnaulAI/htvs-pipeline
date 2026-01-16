@@ -260,10 +260,16 @@ checkpoint generate_ligands_list:
         import glob
         import os
 
+        pdbqt_paths = sorted(glob.glob("results/module3/ligands_pdbqt/*.pdbqt"))
         ligands = [
             os.path.splitext(os.path.basename(path))[0]
-            for path in sorted(glob.glob("results/module3/ligands_pdbqt/*.pdbqt"))
+            for path in pdbqt_paths
         ]
+        invalid_path = "invalid_ligands.txt"
+        if os.path.exists(invalid_path):
+            with open(invalid_path, "r") as handle:
+                invalid_ligands = {line.strip() for line in handle if line.strip()}
+            ligands = [ligand for ligand in ligands if ligand not in invalid_ligands]
         with open(output.list, "w") as handle:
             handle.write("\n".join(ligands))
 
