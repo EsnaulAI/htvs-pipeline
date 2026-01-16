@@ -305,7 +305,7 @@ rule run_gnina_rescore:
 rule contact_filter_hits:
     conda: "../environment.yaml"
     input:
-        scores="results/module3/docking_scores.csv",
+        scores="results/module3/gnina_scores.csv",
         receptor=config["evolution"]["conservation_pdb"]
     output:
         final_hits="results/module3/final_hits.csv"
