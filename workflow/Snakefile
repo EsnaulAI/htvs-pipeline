@@ -329,6 +329,13 @@ rule run_gnina_rescore:
     output: scores="results/module3/gnina_scores.csv"
     params:
         pose_dir="results/module3/docking"
+    run:
+        import runpy
+
+        runpy.run_path(
+            "scripts/module3_run_gnina_rescore.py",
+            init_globals={"snakemake": snakemake},
+        )
     script: "scripts/module3_run_gnina_rescore.py"
         pose_dir="results/module3/docking",
         gnina_wrapper="scripts/gnina_container_wrapper.sh"
