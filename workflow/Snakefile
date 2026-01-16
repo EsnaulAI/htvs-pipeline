@@ -12,9 +12,6 @@ def get_ligands_from_list():
 def get_ligands(wildcards):
     return get_ligands_from_list()
 
-
-LIGANDS = get_ligands
-
 # --- REGLA MAESTRA GLOBAL ---
 rule all:
     input:
@@ -39,7 +36,10 @@ rule all:
         "results/final_report.txt",
         "results/module3/vina",
         "results/module3/vina_logs",
-        expand("results/module3/ligands_pdbqt/{ligand}.pdbqt", ligand=LIGANDS)
+        lambda wc: expand(
+            "results/module3/ligands_pdbqt/{ligand}.pdbqt",
+            ligand=get_ligands_from_list(),
+        )
 
 # =========================================
 # MÓDULO 1: INTELIGENCIA BIOLÓGICA
