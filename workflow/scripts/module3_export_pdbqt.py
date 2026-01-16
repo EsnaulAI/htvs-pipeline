@@ -20,6 +20,16 @@ from logging_utils import (
 )
 
 
+def has_atoms(pdbqt_path: str) -> bool:
+    if not os.path.isfile(pdbqt_path):
+        return False
+    with open(pdbqt_path, "r", encoding="utf-8", errors="ignore") as handle:
+        for line in handle:
+            if line.startswith(("ATOM", "HETATM")):
+                return True
+    return False
+
+
 def convert_sdf_to_pdbqt(sdf_path, out_dir):
     name = os.path.splitext(os.path.basename(sdf_path))[0]
     safe_name = "".join([c for c in name if c.isalnum() or c in ("_", "-")])
@@ -43,8 +53,12 @@ def convert_sdf_to_pdbqt(sdf_path, out_dir):
             )
         )
         return False
-    if not os.path.isfile(out_path) or os.path.getsize(out_path) == 0:
-        log_warn(f"PDBQT vacío o inexistente: {out_path}")
+    if not has_atoms(out_path):
+        log_warn(f"PDBQT vacío o sin átomos: {out_path}")
+        try:
+            os.remove(out_path)
+        except FileNotFoundError:
+            pass
         return False
     return True
 

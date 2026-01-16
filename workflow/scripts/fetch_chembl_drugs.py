@@ -1,6 +1,7 @@
 import requests
 import sys
 import time
+from urllib.parse import urljoin
 
 def fetch_all_molecules(base_url, params):
     molecules = []
@@ -17,7 +18,7 @@ def fetch_all_molecules(base_url, params):
         page_meta = data.get('page_meta') or {}
         next_link = page_meta.get('next')
         if next_link:
-            next_url = next_link
+            next_url = urljoin(base_url, next_link)
             next_params = None
             continue
 

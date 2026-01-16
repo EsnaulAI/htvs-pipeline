@@ -20,6 +20,69 @@ from logging_utils import (
     log_info,
 )
 
+
+ELEMENT_SYMBOLS = {
+    "H",
+    "B",
+    "C",
+    "N",
+    "O",
+    "F",
+    "P",
+    "S",
+    "K",
+    "V",
+    "Y",
+    "I",
+    "W",
+    "U",
+    "NA",
+    "MG",
+    "AL",
+    "SI",
+    "CL",
+    "CA",
+    "MN",
+    "FE",
+    "CO",
+    "NI",
+    "CU",
+    "ZN",
+    "BR",
+    "SE",
+}
+
+
+def infer_element(atom_name: str) -> str:
+    name = atom_name.strip()
+    if not name:
+        return ""
+    if name[0].isdigit() and len(name) > 1:
+        name = name[1:]
+    name = name.upper()
+    if len(name) >= 2 and name[:2] in ELEMENT_SYMBOLS:
+        return name[:2].capitalize()
+    return name[0].capitalize()
+
+
+def normalize_pdb_elements(pdb_path: str) -> int:
+    fixed_lines = []
+    fixed_count = 0
+    with open(pdb_path, "r", encoding="utf-8", errors="ignore") as handle:
+        for line in handle:
+            if line.startswith(("ATOM", "HETATM")):
+                element = line[76:78].strip()
+                if not element:
+                    atom_name = line[12:16]
+                    element = infer_element(atom_name)
+                    if element:
+                        line = f"{line[:76]}{element:>2}{line[78:]}"
+                        fixed_count += 1
+            fixed_lines.append(line)
+    with open(pdb_path, "w", encoding="utf-8") as handle:
+        handle.writelines(fixed_lines)
+    return fixed_count
+
 # Snakemake injects inputs/outputs/params automatically
 pdb_id = snakemake.params.pdb_id
 chain_target = snakemake.params.chain
@@ -50,6 +113,8 @@ structure = parser.get_structure(pdb_id, pdb_file)
 io = PDBIO()
 io.set_structure(structure)
 io.save(out_pdb, select=ChainSelect())
+fixed = normalize_pdb_elements(out_pdb)
+log_info(f"🧪 Se corrigieron {fixed} líneas ATOM/HETATM con elemento vacío en columnas 77-78.")
 
 # 3. Extraer Secuencia FASTA (FIX: Concatenar fragmentos)
 ppb = Polypeptide.PPBuilder()
