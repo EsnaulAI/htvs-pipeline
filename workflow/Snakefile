@@ -154,11 +154,19 @@ rule run_fpocket:
     conda: "envs/fpocket.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: info="results/module1/pockets/target_clean_info.txt"
+    log: "results/module1/pockets/fpocket.log"
     shell:
         """
-        fpocket -f {input.pdb}
+        set -euo pipefail
         mkdir -p results/module1/pockets
-        mv results/module1/target_clean_out/target_clean_info.txt {output.info}
+        mkdir -p $(dirname {log})
+        fpocket -f {input.pdb} > {log} 2>&1
+        info_path="results/module1/target_clean_out/target_clean_info.txt"
+        if [[ ! -s "$info_path" ]]; then
+            echo "Error: fpocket no generó target_clean_info.txt o está vacío: $info_path" | tee -a {log} >&2
+            exit 1
+        fi
+        mv "$info_path" {output.info}
         rm -rf results/module1/target_clean_out
         """
 
