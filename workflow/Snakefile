@@ -304,14 +304,7 @@ rule run_smina:
         sx=config["docking"]["size_x"],
         sy=config["docking"]["size_y"],
         sz=config["docking"]["size_z"]
-    shell:
-        """
-        mkdir -p results/module3/docking results/module3/logs
-        smina --receptor {input.receptor} --ligand {input.ligand} \
-              --center_x {params.cx} --center_y {params.cy} --center_z {params.cz} \
-              --size_x {params.sx} --size_y {params.sy} --size_z {params.sz} \
-              --out {output.docked} --log {output.log} --cpu 1
-        """
+    script: "scripts/module3_run_smina.py"
 
 rule parse_smina_results:
     conda: "../environment.yaml"
