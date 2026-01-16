@@ -81,18 +81,16 @@ def fill_pdb_element_columns(pdb_path):
     updated_lines = []
     for line in lines:
         if line.startswith(("ATOM", "HETATM")):
-            element = line[76:78].strip()
-            if not element:
-                atom_name = line[12:16]
-                inferred = infer_element_from_atom_name(atom_name)
-                if inferred:
-                    corrected += 1
-                element = inferred
-            line = format_pdb_line_with_element(line, element)
+            atom_name = line[12:16]
+            inferred = infer_element_from_atom_name(atom_name)
+            current = line[76:78].strip()
+            if inferred and current != inferred:
+                corrected += 1
+            line = format_pdb_line_with_element(line, inferred or current)
         updated_lines.append(line)
 
     log_info(
-        f"🧪 Se corrigieron {corrected} líneas ATOM/HETATM con elemento vacío en columnas 77-78."
+        f"🧪 Se corrigieron {corrected} líneas ATOM/HETATM en columnas 77-78 con el elemento inferido."
     )
 
     with open(pdb_path, "w") as f:

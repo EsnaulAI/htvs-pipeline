@@ -19,7 +19,7 @@ def fetch_all_molecules(base_url, params):
         next_link = page_meta.get('next')
         if next_link:
             next_url = urljoin(base_url, next_link)
-            if urlparse(next_link).query:
+            if urlparse(next_url).query:
                 next_params = None
             else:
                 next_params = params.copy()
