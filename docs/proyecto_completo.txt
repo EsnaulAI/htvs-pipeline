@@ -173,8 +173,23 @@ rule run_fpocket:
 rule prepare_receptor_phys:
     input: pdb=config["structure"]["clean_pdb"]
     output: pdbqt="results/module1/target_prepared.pdbqt"
+    log: "logs/module1/prepare_receptor_phys.log"
     shell:
-        "obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4"
+        """
+        set -euo pipefail
+        mkdir -p $(dirname {log})
+        tmp_dir=$(mktemp -d)
+        cleanup() { rm -rf "$tmp_dir"; }
+        trap cleanup EXIT
+        tmp_pdb="$tmp_dir/receptor_preprocessed.pdb"
+        tmp_mol2="$tmp_dir/receptor_preprocessed.mol2"
+
+        python workflow/scripts/preprocess_receptor.py {input.pdb} "$tmp_pdb" 2> {log}
+        obabel "$tmp_pdb" -O "$tmp_mol2" --addtotitle "receptor_prepared" --neutralize -p 7.4 2>> {log}
+        obabel "$tmp_mol2" -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4 --addtotitle "receptor_prepared" 2>> {log}
+        """
+
+Nota: los warnings de aromaticidad o tipado en `obabel` pueden ser benignos si el receptor no contiene anillos aromáticos relevantes; revisar el `log` antes de descartar el resultado.
 
 rule discover_best_candidate:
     input:
