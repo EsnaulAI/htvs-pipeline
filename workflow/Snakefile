@@ -409,7 +409,7 @@ rule contact_filter_hits:
 
 # --- REGLA FINAL DE REPORTE ---
 rule build_consensus_final:
-    conda: "../environment.yaml"
+    conda: "envs/vina.yaml"
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
