@@ -327,7 +327,8 @@ rule run_gnina_rescore:
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
-    output: scores="results/module3/gnina_scores.csv"
+    output:
+        scores="results/module3/gnina_scores.csv"
     params:
         pose_dir="results/module3/docking",
         gnina_wrapper="scripts/gnina_container_wrapper.sh"
