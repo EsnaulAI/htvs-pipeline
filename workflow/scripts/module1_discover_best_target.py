@@ -23,6 +23,7 @@ from logging_utils import (
     confirm_file,
     ensure_parent_dir,
     log_info,
+    log_error,
     require_file,
 )
 
@@ -107,6 +108,11 @@ centrality = nx.betweenness_centrality(G)
 # 4. Dinámica (NMA - Rigidez)
 prody_struct = parsePDB(pdb_file)
 calphas = prody_struct.select(f'chain {chain_id} and calpha')
+if calphas is None or calphas.numAtoms() == 0:
+    log_error(
+        f"No se encontraron C-alfa para cadena {chain_id}; no se puede construir ANM."
+    )
+    sys.exit(1)
 anm = ANM('Analysis')
 anm.buildHessian(calphas)
 anm.calcModes(n_modes=20)
