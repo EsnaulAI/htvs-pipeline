@@ -304,7 +304,6 @@ rule run_smina:
         sx=config["docking"]["size_x"],
         sy=config["docking"]["size_y"],
         sz=config["docking"]["size_z"]
-    script: "scripts/module3_run_smina.py"
     run:
         import os
         from pathlib import Path
@@ -329,7 +328,7 @@ rule run_smina:
             )
             logger.warning(warning)
             Path(output.docked).write_text("")
-            Path(output.log).write_text(f"{warning}\n")
+            Path(output.log).write_text("SKIPPED\n")
         else:
             shell(
                 """
