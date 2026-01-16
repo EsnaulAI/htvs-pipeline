@@ -262,7 +262,7 @@ checkpoint generate_ligands_list:
 
         ligands = [
             os.path.splitext(os.path.basename(path))[0]
-            for path in sorted(glob.glob("results/module2/ligands_3d/*.sdf"))
+            for path in sorted(glob.glob("results/module3/ligands_pdbqt/*.pdbqt"))
         ]
         with open(output.list, "w") as handle:
             handle.write("\n".join(ligands))
