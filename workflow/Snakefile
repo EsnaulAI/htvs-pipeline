@@ -306,9 +306,24 @@ rule run_smina:
 rule parse_smina_results:
     conda: "../environment.yaml"
     input:
-        logs_dir="results/module3/logs"
+        logs=lambda wc: expand(
+            "results/module3/logs/{ligand}.log",
+            ligand=get_ligands_from_list(),
+        ),
+        validated="results/module3/smina_outputs_validated.flag"
     output: scores="results/module3/docking_scores.csv"
     script: "scripts/module3_parse_smina_results.py"
+
+rule validate_smina_outputs:
+    conda: "../environment.yaml"
+    input:
+        docked=lambda wc: expand(
+            "results/module3/docking/{ligand}_out.pdbqt",
+            ligand=get_ligands_from_list(),
+        )
+    output:
+        flag="results/module3/smina_outputs_validated.flag"
+    script: "scripts/module3_validate_smina_outputs.py"
 
 rule select_top_candidates:
     conda: "../environment.yaml"
