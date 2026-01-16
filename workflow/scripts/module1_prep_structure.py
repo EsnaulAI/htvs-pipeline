@@ -65,6 +65,14 @@ def infer_element_from_atom_name(atom_name):
         return f"{first}{second}"
     return first
 
+def format_pdb_line_with_element(raw_line, element_value):
+    line_body = raw_line.rstrip("\n")
+    if len(line_body) < 80:
+        line_body = line_body.ljust(80)
+    if element_value:
+        line_body = f"{line_body[:76]}{element_value:>2}{line_body[78:]}"
+    return f"{line_body}\n"
+
 def fill_pdb_element_columns(pdb_path):
     with open(pdb_path, "r") as f:
         lines = f.readlines()
@@ -79,13 +87,13 @@ def fill_pdb_element_columns(pdb_path):
                 inferred = infer_element_from_atom_name(atom_name)
                 if inferred:
                     corrected += 1
-                    line = f"{line[:76]}{inferred:>2}{line[78:]}"
+                element = inferred
+            line = format_pdb_line_with_element(line, element)
         updated_lines.append(line)
 
-    if corrected > 0:
-        log_info(
-            f"🧪 Se corrigieron {corrected} líneas ATOM/HETATM con elemento vacío en columnas 77-78."
-        )
+    log_info(
+        f"🧪 Se corrigieron {corrected} líneas ATOM/HETATM con elemento vacío en columnas 77-78."
+    )
 
     with open(pdb_path, "w") as f:
         f.writelines(updated_lines)
