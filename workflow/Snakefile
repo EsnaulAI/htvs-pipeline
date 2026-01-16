@@ -53,7 +53,7 @@ rule fetch_clean_pdb:
     params:
         pdb_id=config["structure"]["pdb_id"],
         chain=config["structure"]["chain_id"]
-    script: 'workflow/scripts/module1_prep_structure.py'
+    script: 'scripts/module1_prep_structure.py'
 
 if not USE_MMSEQS:
     rule run_blast:
@@ -66,7 +66,7 @@ if not USE_MMSEQS:
             n_hits=config["evolution"]["n_homologs"],
             e_val=config["evolution"]["e_value"],
             db=config["evolution"].get("blast_db", "nr")
-        script: 'workflow/scripts/module1_run_blast.py'
+        script: 'scripts/module1_run_blast.py'
 else:
     rule run_mmseqs:
         conda: "envs/mmseqs.yaml"
@@ -75,7 +75,7 @@ else:
             fasta_homologs=config["evolution"]["unaligned_homologs"],
             method_log="results/module1/homolog_method.log"
         threads: 4
-        script: 'workflow/scripts/module1_run_mmseqs.py'
+        script: 'scripts/module1_run_mmseqs.py'
 
 rule parse_and_align:
     conda: "envs/mafft.yaml"
@@ -84,13 +84,13 @@ rule parse_and_align:
         original_fasta="results/module1/target.fasta"
     output: fasta_msa=config["evolution"]["msa_file"]
     threads: 4
-    script: 'workflow/scripts/module1_parse_and_align.py'
+    script: 'scripts/module1_parse_and_align.py'
 
 rule msa_qc:
     conda: "../environment.yaml"
     input: msa=config["evolution"]["msa_file"]
     output: report=config["evolution"]["msa_qc_report"]
-    script: 'workflow/scripts/module1_msa_qc.py'
+    script: 'scripts/module1_msa_qc.py'
 
 rule map_conservation:
     conda: "../environment.yaml"
@@ -101,7 +101,7 @@ rule map_conservation:
     output:
         pdb_conserved=config["evolution"]["conservation_pdb"],
         pdb_msa_map=config["evolution"]["pdb_msa_map"]
-    script: 'workflow/scripts/module1_map_entropy.py'
+    script: 'scripts/module1_map_entropy.py'
 
 rule run_pydca:
     conda: "envs/pydca.yaml"
@@ -112,7 +112,7 @@ rule run_pydca:
         plot="results/module1/dca_distribution.png",
         report="results/module1/dca_top_contacts.csv"
     params: target_res=config["structure"]["target_residue"]
-    script: 'workflow/scripts/module1_pydca.py'
+    script: 'scripts/module1_pydca.py'
 
 rule run_coevolution_mi:
     input:
@@ -120,7 +120,7 @@ rule run_coevolution_mi:
         pdb_msa_map=config["evolution"]["pdb_msa_map"]
     output: plot="results/module1/coevolution_profile.png"
     params: target_res=config["structure"]["target_residue"]
-    script: 'workflow/scripts/module1_coevolution_mi.py'
+    script: 'scripts/module1_coevolution_mi.py'
 
 rule run_network_analysis:
     conda: "../environment.yaml"
@@ -129,7 +129,7 @@ rule run_network_analysis:
     params:
         target_res=config["structure"]["target_residue"],
         chain=config["structure"]["chain_id"]
-    script: 'workflow/scripts/module1_network_analysis.py'
+    script: 'scripts/module1_network_analysis.py'
 
 rule run_nma:
     conda: "../environment.yaml"
@@ -138,7 +138,7 @@ rule run_nma:
     params:
         target_res=config["structure"]["target_residue"],
         chain=config["structure"]["chain_id"]
-    script: 'workflow/scripts/module1_nma_check.py'
+    script: 'scripts/module1_nma_check.py'
 
 rule check_druggability:
     conda: "../environment.yaml"
@@ -147,7 +147,7 @@ rule check_druggability:
     params:
         chain=config["structure"]["chain_id"],
         target_res=config["structure"]["target_residue"]
-    script: 'workflow/scripts/module1_check_druggability.py'
+    script: 'scripts/module1_check_druggability.py'
 
 rule run_fpocket:
     conda: "envs/fpocket.yaml"
@@ -178,7 +178,7 @@ rule discover_best_candidate:
         pockets="results/module1/pockets/target_clean_info.txt"
     output: csv="results/module1/candidate_ranking.csv"
     params: chain=config["structure"]["chain_id"]
-    script: 'workflow/scripts/module1_discover_best_target.py'
+    script: 'scripts/module1_discover_best_target.py'
 
 rule update_target_config:
     conda: "../environment.yaml"
@@ -187,7 +187,7 @@ rule update_target_config:
         pdb=config["structure"]["clean_pdb"]
     output: touch("results/module1/config_updated.flag")
     params: chain=config["structure"]["chain_id"]
-    script: 'workflow/scripts/bridge_update_config.py'
+    script: 'scripts/bridge_update_config.py'
 
 rule generate_viz:
     conda: "../environment.yaml"
@@ -196,7 +196,7 @@ rule generate_viz:
     params:
         target_res=config["structure"]["target_residue"],
         chain=config["structure"]["chain_id"]
-    script: 'workflow/scripts/generate_chimerax_scene.py'
+    script: 'scripts/generate_chimerax_scene.py'
 
 
 # =========================================
@@ -206,7 +206,7 @@ rule generate_viz:
 rule fetch_library:
     conda: "../environment.yaml"
     output: smi=config["chemistry"]["raw_library"]
-    script: 'workflow/scripts/fetch_chembl_drugs.py'
+    script: 'scripts/fetch_chembl_drugs.py'
 
 rule filter_ligands:
     conda: "envs/rdkit.yaml"
@@ -219,19 +219,19 @@ rule filter_ligands:
         mw=config["chemistry"]["filters"]["mw_max"],
         logp=config["chemistry"]["filters"]["logp_max"],
         amine=config["chemistry"]["filters"]["must_have_amine"]
-    script: 'workflow/scripts/module2_filter_entry.py'
+    script: 'scripts/module2_filter_entry.py'
 
 rule qc_properties:
     conda: "envs/rdkit.yaml"
     input: smi=config["chemistry"]["filtered_library"]
     output: report="results/module2/qc_report.csv"
-    script: 'workflow/scripts/module2_qc_properties.py'
+    script: 'scripts/module2_qc_properties.py'
 
 rule enumerate_protomers:
     conda: "envs/rdkit.yaml"
     input: smi="results/module2/library_dedup.smi"
     output: enumerated="results/module2/library_enumerated.smi"
-    script: 'workflow/scripts/module2_enumerate_protomers.py'
+    script: 'scripts/module2_enumerate_protomers.py'
 
 rule prepare_ligands_3d:
     conda: "envs/rdkit.yaml"
@@ -239,7 +239,7 @@ rule prepare_ligands_3d:
     output: touch("results/module2/preparation_done.flag")
     params: out_dir=config["chemistry"]["prepared_dir"]
     threads: 4
-    script: 'workflow/scripts/module2_prep_3d.py'
+    script: 'scripts/module2_prep_3d.py'
 
 
 checkpoint generate_ligands_list:
@@ -307,7 +307,7 @@ rule parse_smina_results:
     input:
         logs_dir="results/module3/logs"
     output: scores="results/module3/docking_scores.csv"
-    script: "workflow/scripts/module3_parse_smina_results.py"
+    script: "scripts/module3_parse_smina_results.py"
 
 rule select_top_candidates:
     conda: "../environment.yaml"
@@ -319,7 +319,7 @@ rule select_top_candidates:
         smi="results/module3/top_candidates.smi"
     params:
         top_percent=config["docking"].get("top_candidates_percent", 5)
-    script: "workflow/scripts/module3_select_top_candidates.py"
+    script: "scripts/module3_select_top_candidates.py"
 
 rule run_gnina_rescore:
     conda: "../environment.yaml"
@@ -329,8 +329,13 @@ rule run_gnina_rescore:
     output: scores="results/module3/gnina_scores.csv"
     params:
         pose_dir="results/module3/docking"
-        gnina_wrapper="workflow/scripts/gnina_container_wrapper.sh"
-    script: "workflow/scripts/module3_run_gnina_rescore.py"
+    run:
+        import runpy
+
+        runpy.run_path(
+            "scripts/module3_run_gnina_rescore.py",
+            init_globals={"snakemake": snakemake},
+        )
 
 rule contact_filter_hits:
     conda: "../environment.yaml"
@@ -346,7 +351,7 @@ rule contact_filter_hits:
         contact_cutoff=4.0,
         min_contacts=2,
         require_target_contact=True
-    script: "workflow/scripts/module3_contact_filter.py"
+    script: "scripts/module3_contact_filter.py"
 
 # --- REGLA FINAL DE REPORTE ---
 rule build_consensus_final:
@@ -365,7 +370,7 @@ rule build_consensus_final:
         size_x=config["docking"]["size_x"],
         size_y=config["docking"]["size_y"],
         size_z=config["docking"]["size_z"]
-    script: "workflow/scripts/module3_run_vina.py"
+    script: "scripts/module3_run_vina.py"
 # --- MÓDULO 3: EXPORTACIÓN PDBQT ---
 
 rule export_ligands_pdbqt_module3:
@@ -375,7 +380,7 @@ rule export_ligands_pdbqt_module3:
         sdf_dir=config["chemistry"]["prepared_dir"]
     output:
         pdbqt_dir=directory("results/module3/ligands_pdbqt")
-    script: "workflow/scripts/module3_export_pdbqt.py"
+    script: "scripts/module3_export_pdbqt.py"
 
 # --- REGLA FINAL DE REPORTE ---
 
@@ -389,4 +394,4 @@ rule build_consensus_report:
     output:
         consensus="results/module3/consensus_final.csv",
         report="results/final_report.txt"
-    script: "workflow/scripts/module3_build_consensus.py"
+    script: "scripts/module3_build_consensus.py"

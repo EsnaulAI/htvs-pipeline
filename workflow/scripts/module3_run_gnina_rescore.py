@@ -110,7 +110,7 @@ def main():
     output_csv = snakemake.output.scores
     pose_dir = getattr(snakemake.params, "pose_dir", "results/module3/docking")
     gnina_wrapper = getattr(
-        snakemake.params, "gnina_wrapper", "workflow/scripts/gnina_container_wrapper.sh"
+        snakemake.params, "gnina_wrapper", "scripts/gnina_container_wrapper.sh"
     )
 
     require_file(receptor, "receptor preparado")
