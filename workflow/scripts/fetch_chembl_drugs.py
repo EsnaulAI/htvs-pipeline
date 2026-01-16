@@ -2,6 +2,7 @@ import requests
 import sys
 import time
 from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 def fetch_all_molecules(base_url, params):
     molecules = []
@@ -20,6 +21,10 @@ def fetch_all_molecules(base_url, params):
         if next_link:
             next_url = urljoin(base_url, next_link)
             next_params = None
+            if urlparse(next_url).query:
+                next_params = None
+            else:
+                next_params = params.copy()
             continue
 
         total_count = page_meta.get('total_count')

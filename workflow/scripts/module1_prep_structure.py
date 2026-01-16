@@ -116,6 +116,53 @@ io.save(out_pdb, select=ChainSelect())
 fixed = normalize_pdb_elements(out_pdb)
 log_info(f"🧪 Se corrigieron {fixed} líneas ATOM/HETATM con elemento vacío en columnas 77-78.")
 
+def infer_element_from_atom_name(atom_name):
+    cleaned = atom_name.strip()
+    if not cleaned:
+        return ""
+    while cleaned and cleaned[0].isdigit():
+        cleaned = cleaned[1:]
+    if not cleaned:
+        return ""
+    first = cleaned[0].upper()
+    second = cleaned[1].lower() if len(cleaned) > 1 else ""
+    if second and second.islower():
+        return f"{first}{second}"
+    return first
+
+def format_pdb_line_with_element(raw_line, element_value):
+    line_body = raw_line.rstrip("\n")
+    if len(line_body) < 80:
+        line_body = line_body.ljust(80)
+    if element_value:
+        line_body = f"{line_body[:76]}{element_value:>2}{line_body[78:]}"
+    return f"{line_body}\n"
+
+def fill_pdb_element_columns(pdb_path):
+    with open(pdb_path, "r") as f:
+        lines = f.readlines()
+
+    corrected = 0
+    updated_lines = []
+    for line in lines:
+        if line.startswith(("ATOM", "HETATM")):
+            atom_name = line[12:16]
+            inferred = infer_element_from_atom_name(atom_name)
+            current = line[76:78].strip()
+            if inferred and current != inferred:
+                corrected += 1
+            line = format_pdb_line_with_element(line, inferred or current)
+        updated_lines.append(line)
+
+    log_info(
+        f"🧪 Se corrigieron {corrected} líneas ATOM/HETATM en columnas 77-78 con el elemento inferido."
+    )
+
+    with open(pdb_path, "w") as f:
+        f.writelines(updated_lines)
+
+fill_pdb_element_columns(out_pdb)
+
 # 3. Extraer Secuencia FASTA (FIX: Concatenar fragmentos)
 ppb = Polypeptide.PPBuilder()
 peptides = ppb.build_peptides(structure[0][chain_target])

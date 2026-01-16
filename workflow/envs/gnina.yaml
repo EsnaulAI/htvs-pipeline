@@ -4,4 +4,6 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  # gnina no está disponible en conda-forge/bioconda (verificado vía Anaconda API);
+  # el rescoring se ejecuta vía contenedor (gnina_container_wrapper.sh).
   - smina

@@ -95,8 +95,23 @@ def main():
         log_paths = collect_log_files(input_items)
     pose_dir = getattr(snakemake.params, "pose_dir", "results/module3/docking")
 
+    if logs_dir is not None:
+        log_info(f"📂 Logs encontrados: {len(log_paths)} en {logs_dir}")
+    else:
+        log_roots = sorted({str(Path(path).parent) for path in log_paths}) or ["(entrada directa)"]
+        log_info(f"📂 Logs encontrados: {len(log_paths)} en {', '.join(log_roots)}")
+
     if not log_paths:
-        log_warn("⚠️ No se encontraron logs de Smina para analizar.")
+        log_warn(
+            "⚠️ No se encontraron logs de Smina para analizar. "
+            "Se generará un CSV vacío con cabeceras."
+        )
+        ensure_parent_dir(output_csv)
+        df = pd.DataFrame(columns=["ligand_id", "score", "log_path", "pose_path"])
+        df.to_csv(output_csv, index=False)
+        confirm_file(output_csv, "scores de docking")
+        log_info(f"✅ Tabla de scores generada (vacía): {output_csv}")
+        return
 
     ensure_parent_dir(output_csv)
     log_info(f"📥 Procesando {len(log_paths)} logs de Smina...")

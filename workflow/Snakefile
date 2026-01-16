@@ -166,10 +166,20 @@ rule prepare_receptor_phys:
     conda: "envs/openbabel.yaml"
     input: pdb=config["structure"]["clean_pdb"]
     output: pdbqt="results/module1/target_prepared.pdbqt"
+    log: "logs/module1/prepare_receptor_phys.log"
     shell:
         """
         set -euo pipefail
-        obabel {input.pdb} -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4
+        mkdir -p $(dirname {log})
+        tmp_dir=$(mktemp -d)
+        cleanup() {{ rm -rf "$tmp_dir"; }}
+        trap cleanup EXIT
+        tmp_pdb="$tmp_dir/receptor_preprocessed.pdb"
+        tmp_mol2="$tmp_dir/receptor_preprocessed.mol2"
+
+        python workflow/scripts/preprocess_receptor.py {input.pdb} "$tmp_pdb" 2> {log}
+        obabel "$tmp_pdb" -O "$tmp_mol2" --addtotitle "receptor_prepared" --neutralize -p 7.4 2>> {log}
+        obabel "$tmp_mol2" -O {output.pdbqt} -xr --partialcharge gasteiger -p 7.4 --addtotitle "receptor_prepared" 2>> {log}
         """
 
 rule discover_best_candidate:
@@ -252,10 +262,17 @@ checkpoint generate_ligands_list:
         import glob
         import os
 
+        pdbqt_paths = sorted(glob.glob("results/module3/ligands_pdbqt/*.pdbqt"))
         ligands = [
             os.path.splitext(os.path.basename(path))[0]
             for path in sorted(glob.glob("results/module3/ligands_pdbqt/*.pdbqt"))
+            for path in pdbqt_paths
         ]
+        invalid_path = "invalid_ligands.txt"
+        if os.path.exists(invalid_path):
+            with open(invalid_path, "r") as handle:
+                invalid_ligands = {line.strip() for line in handle if line.strip()}
+            ligands = [ligand for ligand in ligands if ligand not in invalid_ligands]
         with open(output.list, "w") as handle:
             handle.write("\n".join(ligands))
 
@@ -282,7 +299,7 @@ rule convert_sdf_to_pdbqt:
         "obabel {input.sdf} -O {output} --partialcharge gasteiger"
 
 rule run_smina:
-    conda: "envs/gnina.yaml" # Smina suele venir con Gnina, o usa env propio
+    conda: "envs/gnina.yaml" # Smina en conda; Gnina se usa vía contenedor para rescoring
     input:
         receptor="results/module1/target_prepared.pdbqt",
         ligand="results/module3/ligands_pdbqt/{ligand}.pdbqt"
@@ -297,13 +314,62 @@ rule run_smina:
         sy=config["docking"]["size_y"],
         sz=config["docking"]["size_z"]
     script: "scripts/module3_run_smina.py"
+    run:
+        import os
+        from pathlib import Path
+
+        from snakemake.logging import logger
+        from snakemake.shell import shell
+
+        def has_atoms(pdbqt_path):
+            with open(pdbqt_path, "r") as handle:
+                for line in handle:
+                    if line.startswith(("ATOM", "HETATM")):
+                        return True
+            return False
+
+        os.makedirs("results/module3/docking", exist_ok=True)
+        os.makedirs("results/module3/logs", exist_ok=True)
+
+        if not has_atoms(input.ligand):
+            warning = (
+                f"Ligand file {input.ligand} has no ATOM/HETATM records; "
+                "skipping smina and writing empty outputs."
+            )
+            logger.warning(warning)
+            Path(output.docked).write_text("")
+            Path(output.log).write_text("SKIPPED\n")
+        else:
+            shell(
+                """
+                smina --receptor {input.receptor} --ligand {input.ligand} \
+                      --center_x {params.cx} --center_y {params.cy} --center_z {params.cz} \
+                      --size_x {params.sx} --size_y {params.sy} --size_z {params.sz} \
+                      --out {output.docked} --log {output.log} --cpu 1
+                """
+            )
 
 rule parse_smina_results:
     conda: "../environment.yaml"
     input:
-        logs_dir="results/module3/logs"
+        logs=lambda wc: expand(
+            "results/module3/logs/{ligand}.log",
+            ligand=get_ligands_from_list(),
+        ),
+        validated="results/module3/smina_outputs_validated.flag"
     output: scores="results/module3/docking_scores.csv"
     script: "scripts/module3_parse_smina_results.py"
+
+rule validate_smina_outputs:
+    conda: "../environment.yaml"
+    input:
+        docked=lambda wc: expand(
+            "results/module3/docking/{ligand}_out.pdbqt",
+            ligand=get_ligands_from_list(),
+        )
+    output:
+        flag="results/module3/smina_outputs_validated.flag"
+    script: "scripts/module3_validate_smina_outputs.py"
 
 rule select_top_candidates:
     conda: "../environment.yaml"
@@ -322,10 +388,14 @@ rule run_gnina_rescore:
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
-    output: scores="results/module3/gnina_scores.csv"
+    output:
+        scores="results/module3/gnina_scores.csv"
     params:
         pose_dir="results/module3/docking"
     script: "scripts/module3_run_gnina_rescore.py"
+        pose_dir="results/module3/docking",
+        gnina_wrapper="scripts/gnina_container_wrapper.sh"
+    script: 'scripts/module3_run_gnina_rescore.py'
 
 rule contact_filter_hits:
     conda: "../environment.yaml"
@@ -345,7 +415,7 @@ rule contact_filter_hits:
 
 # --- REGLA FINAL DE REPORTE ---
 rule build_consensus_final:
-    conda: "../environment.yaml"
+    conda: "envs/vina.yaml"
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
