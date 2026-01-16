@@ -322,13 +322,14 @@ rule select_top_candidates:
     script: "workflow/scripts/module3_select_top_candidates.py"
 
 rule run_gnina_rescore:
-    conda:
-        "envs/gnina.yaml"
+    conda: "../environment.yaml"
     input:
         receptor="results/module1/target_prepared.pdbqt",
         top_candidates="results/module3/top_candidates.csv"
     output: scores="results/module3/gnina_scores.csv"
-    params: pose_dir="results/module3/docking"
+    params:
+        pose_dir="results/module3/docking"
+        gnina_wrapper="workflow/scripts/gnina_container_wrapper.sh"
     script: "workflow/scripts/module3_run_gnina_rescore.py"
 
 rule contact_filter_hits:

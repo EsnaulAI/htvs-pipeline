@@ -86,3 +86,28 @@ También puedes usar el script auxiliar:
 ./scripts/unlock_snakemake.sh
 ./scripts/run_snakemake_conda.sh --cores 4 -s workflow/Snakefile
 ```
+
+## Gnina vía contenedor (Docker/Singularity)
+
+Si no puedes instalar Gnina con conda/mamba, la regla `run_gnina_rescore`
+usa un wrapper que ejecuta Gnina en contenedor. Por defecto intenta Docker
+y luego Apptainer/Singularity.
+
+Ejemplo directo (Docker):
+
+```bash
+docker run --rm -v "$PWD:/work" -w /work gnina/gnina gnina --help
+```
+
+Ejemplo directo (Singularity/Apptainer con imagen local `.sif`):
+
+```bash
+apptainer exec --bind "$PWD:/work" /ruta/gnina.sif gnina --help
+```
+
+Puedes personalizar la imagen y el runtime usando variables de entorno:
+
+```bash
+export GNINA_CONTAINER_IMAGE=gnina/gnina
+export GNINA_CONTAINER_RUNTIME=docker  # o apptainer/singularity
+```
