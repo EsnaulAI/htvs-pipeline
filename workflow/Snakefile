@@ -311,7 +311,11 @@ rule contact_filter_hits:
         final_hits="results/module3/final_hits.csv"
     params:
         chain=config["structure"]["chain_id"],
-        target_res=config["structure"]["target_residue"]
+        target_res=config["structure"]["target_residue"],
+        pocket_radius=6.0,
+        contact_cutoff=4.0,
+        min_contacts=2,
+        require_target_contact=True
     script: "workflow/scripts/module3_contact_filter.py"
 
 # --- REGLA FINAL DE REPORTE ---
