@@ -63,7 +63,7 @@ def filter_ligands_list(ligands_list_path, invalid_ids):
     return True
 
 
-def convert_sdf_to_pdbqt(sdf_path, out_dir, invalid_log_path):
+def convert_sdf_to_pdbqt(sdf_path, out_dir, invalid_log_path=None):
     name = os.path.splitext(os.path.basename(sdf_path))[0]
     safe_name = "".join([c for c in name if c.isalnum() or c in ("_", "-")])
     if not safe_name:
@@ -85,26 +85,17 @@ def convert_sdf_to_pdbqt(sdf_path, out_dir, invalid_log_path):
                 stderr=result.stderr.strip() or "sin salida de error",
             )
         )
-        return False
+        if invalid_log_path:
+            log_invalid_ligands({safe_name}, invalid_log_path)
+        return False, safe_name
     if not has_atoms(out_path):
         log_warn(f"PDBQT vacío o sin átomos: {out_path}")
         try:
             os.remove(out_path)
         except FileNotFoundError:
             pass
-        return False
-    return True
-        return False, None
-    if not os.path.isfile(out_path) or os.path.getsize(out_path) == 0:
-        log_warn(f"PDBQT vacío o inexistente: {out_path}")
-        if os.path.isfile(out_path):
-            os.remove(out_path)
-        log_invalid_ligands({safe_name}, invalid_log_path)
-        return False, safe_name
-    if not has_pdbqt_atoms(out_path):
-        log_warn(f"PDBQT sin átomos para {safe_name}; eliminado.")
-        os.remove(out_path)
-        log_invalid_ligands({safe_name}, invalid_log_path)
+        if invalid_log_path:
+            log_invalid_ligands({safe_name}, invalid_log_path)
         return False, safe_name
     return True, None
 
@@ -132,23 +123,6 @@ def main():
     converted = 0
     valid = 0
     invalid = 0
-    for sdf_path in sdf_files:
-        converted_ok = convert_sdf_to_pdbqt(sdf_path, out_dir)
-        if converted_ok:
-            converted += 1
-            name = os.path.splitext(os.path.basename(sdf_path))[0]
-            safe_name = "".join([c for c in name if c.isalnum() or c in ("_", "-")])
-            if not safe_name:
-                safe_name = name
-            out_path = os.path.join(out_dir, f"{safe_name}.pdbqt")
-            if not pdbqt_has_atoms(out_path):
-                os.remove(out_path)
-                with open(INVALID_LIGANDS_LOG, "a", encoding="utf-8") as log_file:
-                    log_file.write(f"{safe_name}\n")
-                log_warn(f"PDBQT sin átomos, eliminado: {out_path}")
-                invalid += 1
-            else:
-                valid += 1
     invalid_ids = set()
     for sdf_path in sdf_files:
         success, invalid_id = convert_sdf_to_pdbqt(
@@ -156,8 +130,10 @@ def main():
         )
         if success:
             converted += 1
+            valid += 1
         elif invalid_id:
             invalid_ids.add(invalid_id)
+            invalid += 1
 
     if invalid_ids:
         if filter_ligands_list("results/module2/ligands_list.txt", invalid_ids):
